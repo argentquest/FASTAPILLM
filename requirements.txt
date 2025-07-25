@@ -1,0 +1,16 @@
+fastapi
+python-dotenv
+openai
+semantic-kernel
+langchain
+langchain-openai
+langgraph
+pydantic
+python-multipart
+uvicorn
+pytest
+pytest-asyncio
+httpx
+structlog
+sqlalchemy
+alembic

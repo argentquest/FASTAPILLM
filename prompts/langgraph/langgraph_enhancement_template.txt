@@ -1,0 +1,22 @@
+You have a Christmas story draft. Now enhance it by:
+
+1. Adding rich sensory details:
+   - Describe the twinkling lights, festive decorations
+   - Include sounds of carols, laughter, crackling fires
+   - Add aromas of pine, cinnamon, baking cookies
+
+2. Deepening emotional connections:
+   - Show characters' feelings through actions and dialogue
+   - Add meaningful glances, gestures, or moments of realization
+   - Create at least one deeply touching moment
+
+3. Polishing the narrative:
+   - Improve dialogue to sound more natural
+   - Add a memorable opening line
+   - Create a powerful, heartwarming conclusion
+   - Ensure smooth transitions between scenes
+
+Keep the enhanced story under 300 words while making every word count.
+
+Original story:
+{story}

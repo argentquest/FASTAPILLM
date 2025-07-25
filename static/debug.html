@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Debug Tool - AI Story Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .debug-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .debug-section h3 {
+            margin-top: 0;
+        }
+        pre {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .request-info {
+            background-color: #cfe2ff;
+            color: #084298;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .response-headers {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API Debug Tool</h1>
+        <p>Use this tool to test the story generation API and debug 422 validation errors.</p>
+        
+        <form id="storyForm">
+            <div class="form-group">
+                <label for="endpoint">API Endpoint:</label>
+                <select id="endpoint" name="endpoint">
+                    <option value="/api/semantic-kernel">Semantic Kernel</option>
+                    <option value="/api/langchain">LangChain</option>
+                    <option value="/api/langgraph">LangGraph</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="primaryCharacter">Primary Character:</label>
+                <input type="text" id="primaryCharacter" name="primaryCharacter" placeholder="e.g., Santa Claus" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="secondaryCharacter">Secondary Character:</label>
+                <input type="text" id="secondaryCharacter" name="secondaryCharacter" placeholder="e.g., Rudolph" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">Send Request</button>
+        </form>
+        
+        <div id="debugInfo" style="display: none;">
+            <div class="debug-section">
+                <h3>Request Details</h3>
+                <div id="requestInfo"></div>
+            </div>
+            
+            <div class="debug-section">
+                <h3>Response</h3>
+                <div id="responseInfo"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('storyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const debugInfo = document.getElementById('debugInfo');
+            const requestInfo = document.getElementById('requestInfo');
+            const responseInfo = document.getElementById('responseInfo');
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Sending... <span class="spinner"></span>';
+            
+            // Get form data
+            const endpoint = document.getElementById('endpoint').value;
+            const primaryCharacter = document.getElementById('primaryCharacter').value;
+            const secondaryCharacter = document.getElementById('secondaryCharacter').value;
+            
+            // Prepare request data
+            const requestData = {
+                primary_character: primaryCharacter,
+                secondary_character: secondaryCharacter
+            };
+            
+            // Show debug info
+            debugInfo.style.display = 'block';
+            
+            // Display request info
+            requestInfo.innerHTML = `
+                <div class="request-info">
+                    <strong>Method:</strong> POST<br>
+                    <strong>URL:</strong> ${window.location.origin}${endpoint}<br>
+                    <strong>Content-Type:</strong> application/json
+                </div>
+                <strong>Request Body:</strong>
+                <pre>${JSON.stringify(requestData, null, 2)}</pre>
+            `;
+            
+            try {
+                const startTime = Date.now();
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+                
+                const responseData = await response.json();
+                
+                // Display response info
+                let responseHtml = `
+                    <div class="${response.ok ? 'success' : 'error'}">
+                        <strong>Status:</strong> ${response.status} ${response.statusText}<br>
+                        <strong>Response Time:</strong> ${responseTime}ms<br>
+                        <strong>Request ID:</strong> ${response.headers.get('X-Request-ID') || 'N/A'}
+                    </div>
+                `;
+                
+                // Add response headers
+                responseHtml += '<div class="response-headers"><strong>Response Headers:</strong><br>';
+                for (const [key, value] of response.headers.entries()) {
+                    responseHtml += `${key}: ${value}<br>`;
+                }
+                responseHtml += '</div>';
+                
+                responseHtml += '<strong>Response Body:</strong>';
+                responseHtml += `<pre>${JSON.stringify(responseData, null, 2)}</pre>`;
+                
+                // If it's a validation error, highlight the specific issues
+                if (response.status === 422 && responseData.error && responseData.error.details) {
+                    responseHtml += '<div class="error"><strong>Validation Issues:</strong><ul>';
+                    responseData.error.details.forEach(detail => {
+                        responseHtml += `<li><strong>${detail.field}:</strong> ${detail.message} (Type: ${detail.type})`;
+                        if (detail.input !== null) {
+                            responseHtml += ` - Input: "${detail.input}"`;
+                        }
+                        responseHtml += '</li>';
+                    });
+                    responseHtml += '</ul></div>';
+                }
+                
+                responseInfo.innerHTML = responseHtml;
+                
+            } catch (error) {
+                responseInfo.innerHTML = `
+                    <div class="error">
+                        <strong>Network Error:</strong><br>
+                        ${error.message}<br><br>
+                        This could be a network issue or the server might not be running.
+                    </div>
+                `;
+            } finally {
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Send Request';
+            }
+        });
+    </script>
+</body>
+</html>
