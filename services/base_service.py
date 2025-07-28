@@ -2,11 +2,12 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, Union, Tuple
 import asyncio
 import time
-from openai import AsyncAzureOpenAI, AsyncOpenAI, APIError, APIConnectionError, RateLimitError
+from openai import AsyncOpenAI, APIError, APIConnectionError, RateLimitError
 import httpx
 
 from config import settings
 from logging_config import get_logger
+from pricing import calculate_cost, get_model_pricing
 from exceptions import (
     APIKeyError,
     APIConnectionError as CustomAPIConnectionError,
@@ -21,7 +22,7 @@ class BaseService(ABC):
     
     This abstract base class provides common functionality for AI
     generation services including:
-    - Client initialization for multiple providers (Azure, OpenRouter, custom)
+    - Client initialization for custom OpenAI-compatible providers
     - Connection pooling and retry logic
     - Error handling and logging
     - Token usage tracking
@@ -30,23 +31,23 @@ class BaseService(ABC):
     
     Attributes:
         service_name: The name of the service class.
-        provider: The configured LLM provider.
+        provider_name: The custom provider name.
     """
     
     def __init__(self):
-        self._client: Optional[Union[AsyncAzureOpenAI, AsyncOpenAI]] = None
+        self._client: Optional[AsyncOpenAI] = None
         self.service_name = self.__class__.__name__
-        self.provider = settings.llm_provider
+        self.provider_name = settings.provider_name
         
     @property
-    def client(self) -> Union[AsyncAzureOpenAI, AsyncOpenAI]:
+    def client(self) -> AsyncOpenAI:
         """Lazy initialization of OpenAI client.
         
         Creates the client on first access to avoid initialization
         overhead during service creation.
         
         Returns:
-            An AsyncAzureOpenAI or AsyncOpenAI client instance.
+            An AsyncOpenAI client instance.
             
         Raises:
             APIKeyError: If client initialization fails.
@@ -55,23 +56,22 @@ class BaseService(ABC):
             self._client = self._create_client()
         return self._client
     
-    def _create_client(self) -> Union[AsyncAzureOpenAI, AsyncOpenAI]:
+    def _create_client(self) -> AsyncOpenAI:
         """Create OpenAI client with connection pooling.
         
-        Initializes the appropriate client based on the configured provider
+        Initializes the client for the custom provider
         with optimized connection settings for performance.
         
         Returns:
-            A configured AsyncAzureOpenAI or AsyncOpenAI client.
+            A configured AsyncOpenAI client.
             
         Raises:
             APIKeyError: If client initialization fails.
             NotImplementedError: If custom API type is not supported.
             
         Examples:
-            For Azure:
             >>> client = self._create_client()
-            >>> isinstance(client, AsyncAzureOpenAI)
+            >>> isinstance(client, AsyncOpenAI)
             True
         """
         try:
@@ -84,68 +84,43 @@ class BaseService(ABC):
                 )
             )
             
-            if settings.llm_provider == "azure":
-                client = AsyncAzureOpenAI(
-                    api_key=settings.azure_openai_api_key,
-                    api_version=settings.azure_openai_api_version,
-                    azure_endpoint=settings.azure_openai_endpoint,
-                    http_client=http_client,
-                    max_retries=0  # We handle retries ourselves
-                )
-                
-                logger.info("Azure OpenAI client created",
-                           service=self.service_name,
-                           endpoint=settings.azure_openai_endpoint)
-            elif settings.llm_provider == "openrouter":
-                # OpenRouter uses the OpenAI client with custom base URL
-                headers = {
-                    "HTTP-Referer": settings.openrouter_site_url or "http://localhost:8000",
-                    "X-Title": settings.openrouter_app_name,
-                }
-                
+            # Provider (e.g., Tachyon, Ollama, LM Studio)
+            # HEADERS CONFIGURATION: To change provider headers, update PROVIDER_HEADERS in .env
+            # Examples:
+            # - OpenRouter: {"HTTP-Referer": "http://localhost:8000", "X-Title": "App Name"}
+            # - Tachyon/Standard: {} (empty - uses default Authorization header)
+            # - Custom Auth: {"X-API-Key": "your-key", "Authorization": "Bearer token"}
+            headers = settings.provider_headers or {}
+            
+            if settings.provider_api_type == "openai":
+                # Use OpenAI-compatible client
+                # The headers defined above are passed to ALL API calls made by this client
                 client = AsyncOpenAI(
-                    api_key=settings.openrouter_api_key,
-                    base_url="https://openrouter.ai/api/v1",
+                    api_key=settings.provider_api_key,  # Sent as Authorization: Bearer {key}
+                    base_url=settings.provider_api_base_url,
                     http_client=http_client,
-                    max_retries=0,  # We handle retries ourselves
-                    default_headers=headers
+                    max_retries=0,
+                    default_headers=headers  # ← HEADERS ARE SET HERE for all requests
                 )
-                
-                logger.info("OpenRouter client created",
-                           service=self.service_name,
-                           model=settings.openrouter_model)
-            else:  # custom provider
-                # Custom provider (e.g., Tachyon)
-                headers = settings.custom_headers or {}
-                
-                if settings.custom_api_type == "openai":
-                    # Use OpenAI-compatible client
-                    client = AsyncOpenAI(
-                        api_key=settings.custom_api_key,
-                        base_url=settings.custom_api_base_url,
-                        http_client=http_client,
-                        max_retries=0,
-                        default_headers=headers
-                    )
-                else:
-                    # For non-OpenAI compatible APIs, we'd need a custom implementation
-                    raise NotImplementedError(
-                        f"Custom API type '{settings.custom_api_type}' is not yet implemented. "
-                        "Currently only 'openai' compatible APIs are supported."
-                    )
-                
-                logger.info("Custom provider client created",
-                           service=self.service_name,
-                           provider=settings.custom_provider_name,
-                           base_url=settings.custom_api_base_url,
-                           model=settings.custom_model)
+            else:
+                # For non-OpenAI compatible APIs, we'd need a custom implementation
+                raise NotImplementedError(
+                    f"Provider API type '{settings.provider_api_type}' is not yet implemented. "
+                    "Currently only 'openai' compatible APIs are supported."
+                )
+            
+            logger.info("Provider client created",
+                       service=self.service_name,
+                       provider=settings.provider_name,
+                       base_url=settings.provider_api_base_url,
+                       model=settings.provider_model)
             
             return client
         except Exception as e:
-            logger.error(f"Failed to create {settings.llm_provider} client",
+            logger.error(f"Failed to create {settings.provider_name} client",
                         service=self.service_name,
                         error=str(e))
-            raise APIKeyError(f"Failed to initialize {settings.llm_provider} client")
+            raise APIKeyError(f"Failed to initialize {settings.provider_name} client")
     
     async def _call_api_with_retry(self, messages: list[Dict[str, str]], **kwargs) -> tuple[str, Dict[str, Any]]:
         """Call OpenAI API with retry logic.
@@ -229,12 +204,7 @@ class BaseService(ABC):
         """
         try:
             # Set default parameters based on provider
-            if settings.llm_provider == "azure":
-                model = settings.azure_openai_deployment_name
-            elif settings.llm_provider == "openrouter":
-                model = settings.openrouter_model
-            else:  # custom
-                model = settings.custom_model
+            model = settings.provider_model
             
             params = {
                 "model": model,
@@ -245,7 +215,7 @@ class BaseService(ABC):
             }
             
             # Make API call
-            logger.debug(f"Calling {settings.llm_provider} API",
+            logger.debug(f"Calling {settings.provider_name} API",
                         service=self.service_name,
                         model=model,
                         message_count=len(messages))
@@ -259,23 +229,43 @@ class BaseService(ABC):
             
             content = response.choices[0].message.content
             
-            # Extract token usage information
+            # Extract token usage from response
+            input_tokens = response.usage.prompt_tokens if response.usage else 0
+            output_tokens = response.usage.completion_tokens if response.usage else 0
+            total_tokens = response.usage.total_tokens if response.usage else 0
+            
+            # Calculate cost information using pricing module
+            input_cost, output_cost, total_cost = calculate_cost(model, input_tokens, output_tokens)
+            pricing = get_model_pricing(model)
+            
+            # Prepare comprehensive usage information including costs
             usage_info = {
-                "input_tokens": response.usage.prompt_tokens if response.usage else 0,
-                "output_tokens": response.usage.completion_tokens if response.usage else 0,  
-                "total_tokens": response.usage.total_tokens if response.usage else 0,
+                # Token usage information
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": total_tokens,
+                
+                # Cost information (converted to float for JSON serialization)
+                "estimated_cost_usd": float(total_cost),
+                "input_cost": float(input_cost),
+                "output_cost": float(output_cost),
+                "input_cost_per_1k_tokens": float(pricing["input_cost_per_1k"]),
+                "output_cost_per_1k_tokens": float(pricing["output_cost_per_1k"]),
+                
+                # Performance metrics
                 "execution_time_ms": round(execution_time_ms, 2)
             }
             
             logger.info("API call successful",
                        service=self.service_name,
-                       provider=settings.llm_provider,
+                       provider=settings.provider_name,
                        model=model,
                        response_length=len(content) if content else 0,
                        execution_time_ms=usage_info["execution_time_ms"],
                        input_tokens=usage_info["input_tokens"],
                        output_tokens=usage_info["output_tokens"],
-                       total_tokens=usage_info["total_tokens"])
+                       total_tokens=usage_info["total_tokens"],
+                       estimated_cost_usd=usage_info["estimated_cost_usd"])
             
             return content or "", usage_info
             

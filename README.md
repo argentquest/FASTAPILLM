@@ -5,7 +5,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-A modern, extensible AI content generation platform supporting multiple AI frameworks and providers. Built with FastAPI and designed for scalability, maintainability, and ease of use.
+A modern, extensible AI content generation platform supporting multiple AI frameworks with custom OpenAI-compatible providers. Built with FastAPI and designed for scalability, maintainability, and ease of use.
 
 ## 🚀 Features
 
@@ -14,10 +14,10 @@ A modern, extensible AI content generation platform supporting multiple AI frame
 - **LangChain**: Structured text processing and analytical content generation  
 - **LangGraph**: Complex multi-step workflows with iterative refinement
 
-### Flexible AI Providers
-- **Azure OpenAI**: Enterprise-grade AI with GPT models
-- **OpenRouter**: Access to multiple AI models through a single API
-- **Custom Providers**: Support for any OpenAI-compatible API
+### AI Provider Support
+- **OpenAI-Compatible APIs**: Support for any OpenAI-compatible provider
+- **Local Models**: Run with Ollama, LM Studio, vLLM, etc.
+- **Third-Party Services**: Compatible with Tachyon, FastChat, and more
 
 ### Dual Functionality
 - **Content Generation**: Structured content creation for stories, articles, and more
@@ -61,35 +61,41 @@ A modern, extensible AI content generation platform supporting multiple AI frame
 ### Local Development
 
 1. Clone the repository
-2. Copy `.env.example` to `.env` and configure your LLM provider:
+2. Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
 
-3. Configure your chosen provider:
+3. Configure your provider:
 
-**For Azure OpenAI:**
 ```env
-LLM_PROVIDER=azure
-AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+# Your API key for authentication
+PROVIDER_API_KEY=your-api-key
+
+# Base URL for the API (must be OpenAI-compatible)
+PROVIDER_API_BASE_URL=https://api.your-provider.com/v1
+
+# Model name/identifier
+PROVIDER_MODEL=your-model-name
+
+# Display name for your provider
+PROVIDER_NAME=Your Provider Name
 ```
 
-**For OpenRouter:**
+**Example configurations:**
+
+*For Ollama (local):*
 ```env
-LLM_PROVIDER=openrouter
-OPENROUTER_API_KEY=your-api-key
-OPENROUTER_MODEL=openai/gpt-4-turbo-preview
+PROVIDER_API_BASE_URL=http://localhost:11434/v1
+PROVIDER_MODEL=llama2
+PROVIDER_NAME=Ollama Local
 ```
 
-**For Custom Provider (e.g., Tachyon, Ollama, etc.):**
+*For Tachyon LLM:*
 ```env
-LLM_PROVIDER=custom
-CUSTOM_API_KEY=your-api-key
-CUSTOM_API_BASE_URL=https://api.tachyon.ai/v1
-CUSTOM_MODEL=tachyon-fast
-CUSTOM_PROVIDER_NAME=Tachyon LLM
+PROVIDER_API_BASE_URL=https://api.tachyon.ai/v1
+PROVIDER_MODEL=tachyon-fast
+PROVIDER_NAME=Tachyon LLM
 ```
 
 4. Install dependencies:

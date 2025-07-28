@@ -327,7 +327,11 @@ async def handle_chat_message(
         input_tokens=usage_info["input_tokens"],
         output_tokens=usage_info["output_tokens"],
         total_tokens=usage_info["total_tokens"],
-        request_id=request_id
+        request_id=request_id,
+        # Cost tracking fields
+        estimated_cost_usd=usage_info["estimated_cost_usd"],
+        input_cost_per_1k_tokens=usage_info["input_cost_per_1k_tokens"],
+        output_cost_per_1k_tokens=usage_info["output_cost_per_1k_tokens"]
     )
     db.add(ai_message)
     
@@ -428,7 +432,7 @@ async def get_conversations(
             id=conv.id,
             title=conv.title,
             method=conv.method,
-            provider=conv.provider,
+            model=conv.model,
             message_count=message_count,
             last_message_preview=last_message_preview,
             created_at=conv.created_at.isoformat(),

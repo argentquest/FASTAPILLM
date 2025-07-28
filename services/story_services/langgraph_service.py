@@ -107,9 +107,19 @@ class LangGraphService(BaseService):
         
         # Combine usage information from both API calls
         combined_usage = {
+            # Token usage information
             "input_tokens": draft_usage["input_tokens"] + enhancement_usage["input_tokens"],
             "output_tokens": draft_usage["output_tokens"] + enhancement_usage["output_tokens"],
             "total_tokens": draft_usage["total_tokens"] + enhancement_usage["total_tokens"],
+            
+            # Cost information (combined from both calls)
+            "estimated_cost_usd": draft_usage["estimated_cost_usd"] + enhancement_usage["estimated_cost_usd"],
+            "input_cost": draft_usage["input_cost"] + enhancement_usage["input_cost"],
+            "output_cost": draft_usage["output_cost"] + enhancement_usage["output_cost"],
+            "input_cost_per_1k_tokens": draft_usage["input_cost_per_1k_tokens"],  # Same for both calls
+            "output_cost_per_1k_tokens": draft_usage["output_cost_per_1k_tokens"],  # Same for both calls
+            
+            # Performance metrics
             "execution_time_ms": draft_usage["execution_time_ms"] + enhancement_usage["execution_time_ms"]
         }
         

@@ -50,7 +50,7 @@ class SemanticKernelService(BaseService):
         
         logger.info("Starting content generation",
                    service=self.service_name,
-                   provider=self.provider,
+                   provider=self.provider_name,
                    primary_input=primary_input,
                    secondary_input=secondary_input)
         
