@@ -240,53 +240,30 @@ class StoryGenerator {
             providerElement.textContent = this.currentProvider.provider;
         }
 
-        // Update provider modal
-        const providerInfo = document.getElementById('providerInfo');
-        if (this.currentProvider && providerInfo) {
-            providerInfo.innerHTML = this.formatProviderInfo(this.currentProvider);
+        // Update model modal
+        const modelInfo = document.getElementById('modelInfo');
+        if (this.currentProvider && modelInfo) {
+            modelInfo.innerHTML = this.formatModelInfo(this.currentProvider);
         }
     }
 
-    formatProviderInfo(provider) {
-        let html = `
-            <div class="mb-3">
-                <strong>Provider:</strong> 
-                <span class="badge bg-primary">${provider.provider}</span>
-            </div>
-        `;
-
+    formatModelInfo(provider) {
         if (provider.model) {
-            html += `
-                <div class="mb-3">
-                    <strong>Model:</strong> 
-                    <span class="badge bg-secondary">${provider.model}</span>
+            return `
+                <div class="mb-4">
+                    <h4 class="text-primary mb-3">${provider.model}</h4>
+                    <div class="badge bg-light text-dark px-3 py-2 fs-6">
+                        Currently Active Model
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="mb-4">
+                    <h5 class="text-muted">No Model Information Available</h5>
                 </div>
             `;
         }
-
-        if (provider.endpoint) {
-            html += `
-                <div class="mb-3">
-                    <strong>Endpoint:</strong> 
-                    <code>${provider.endpoint}</code>
-                </div>
-            `;
-        }
-
-        if (provider.available_models) {
-            html += `
-                <div class="mb-3">
-                    <strong>Available Models:</strong>
-                    <ul class="list-unstyled mt-2">
-                        ${provider.available_models.map(model => 
-                            `<li><span class="badge bg-light text-dark">${model}</span></li>`
-                        ).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        return html;
     }
 
     async loadStories() {

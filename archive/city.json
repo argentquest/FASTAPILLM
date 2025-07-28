@@ -1,0 +1,86 @@
+{
+  "timestamp": "2025-07-28T16:56:53-05:00",
+  "unit": "Fahrenheit",
+  "cities": [
+    {
+      "name": "New York City",
+      "state": "NY",
+      "temperature": 85,
+      "conditions": "Partly Cloudy",
+      "humidity": 68,
+      "wind_speed_mph": 8
+    },
+    {
+      "name": "Los Angeles",
+      "state": "CA",
+      "temperature": 78,
+      "conditions": "Sunny",
+      "humidity": 55,
+      "wind_speed_mph": 5
+    },
+    {
+      "name": "Chicago",
+      "state": "IL",
+      "temperature": 82,
+      "conditions": "Thunderstorms Possible",
+      "humidity": 75,
+      "wind_speed_mph": 12
+    },
+    {
+      "name": "Houston",
+      "state": "TX",
+      "temperature": 94,
+      "conditions": "Hot and Humid",
+      "humidity": 80,
+      "wind_speed_mph": 10
+    },
+    {
+      "name": "Phoenix",
+      "state": "AZ",
+      "temperature": 108,
+      "conditions": "Clear",
+      "humidity": 15,
+      "wind_speed_mph": 7
+    },
+    {
+      "name": "Philadelphia",
+      "state": "PA",
+      "temperature": 86,
+      "conditions": "Mostly Sunny",
+      "humidity": 70,
+      "wind_speed_mph": 6
+    },
+    {
+      "name": "San Antonio",
+      "state": "TX",
+      "temperature": 96,
+      "conditions": "Sunny",
+      "humidity": 72,
+      "wind_speed_mph": 9
+    },
+    {
+      "name": "San Diego",
+      "state": "CA",
+      "temperature": 75,
+      "conditions": "Coastal Fog Clearing",
+      "humidity": 88,
+      "wind_speed_mph": 4
+    },
+    {
+      "name": "Dallas",
+      "state": "TX",
+      "temperature": 95,
+      "conditions": "Sunny",
+      "humidity": 65,
+      "wind_speed_mph": 11
+    },
+    {
+      "name": "Jacksonville",
+      "state": "FL",
+      "temperature": 90,
+      "conditions": "Pop-up Showers",
+      "humidity": 85,
+      "wind_speed_mph": 7
+    }
+  ]
+}

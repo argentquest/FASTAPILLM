@@ -66,27 +66,27 @@ If files are missing, regenerate them or restore from backup.
 
 **Solutions:**
 1. Verify the model name is correct for your provider
-2. Check if you have access to the specified model
-3. For custom providers, ensure the model is deployed and available
+2. Check if the model is deployed and available
+3. For local models (Ollama, LM Studio), ensure the model is downloaded
 
 ## Configuration Issues
 
 ### Invalid Provider Configuration
 
-**Error:** `ValueError: LLM provider must be 'azure', 'openrouter', or 'custom'`
+**Error:** `ValueError: Provider requires PROVIDER_API_KEY, PROVIDER_API_BASE_URL, and PROVIDER_MODEL`
 
-**Solution:** Set `LLM_PROVIDER` to one of the supported values:
+**Solution:** Ensure all required provider settings are configured:
 ```env
-LLM_PROVIDER=azure        # For Azure OpenAI
-LLM_PROVIDER=openrouter   # For OpenRouter
-LLM_PROVIDER=custom       # For custom providers
+PROVIDER_API_KEY=your-api-key
+PROVIDER_API_BASE_URL=https://api.your-provider.com/v1
+PROVIDER_MODEL=your-model-name
 ```
 
-### Custom Headers Format Error
+### Provider Headers Format Error
 
-**Error:** `ValueError: CUSTOM_HEADERS must be valid JSON`
+**Error:** `ValueError: PROVIDER_HEADERS must be valid JSON`
 
-**Solution:** Ensure `CUSTOM_HEADERS` is valid JSON:
+**Solution:** Ensure `PROVIDER_HEADERS` is valid JSON:
 ```env
 # Correct format
 CUSTOM_HEADERS={"Authorization": "Bearer token", "X-Custom": "value"}

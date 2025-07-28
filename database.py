@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, Float, ForeignKey, Numeric
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.sql import func
@@ -46,6 +46,12 @@ class Story(Base):
     request_id = Column(String(50))
     provider = Column(String(50))  # azure, openrouter, custom
     model = Column(String(100))
+    
+    # Cost tracking fields
+    estimated_cost_usd = Column(Numeric(precision=10, scale=6), nullable=True, comment="Estimated cost in USD for this request")
+    input_cost_per_1k_tokens = Column(Numeric(precision=8, scale=6), nullable=True, comment="Cost per 1000 input tokens used for calculation")
+    output_cost_per_1k_tokens = Column(Numeric(precision=8, scale=6), nullable=True, comment="Cost per 1000 output tokens used for calculation")
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class ChatConversation(Base):
@@ -74,10 +80,65 @@ class ChatMessage(Base):
     output_tokens = Column(Integer)
     total_tokens = Column(Integer)
     request_id = Column(String(50))
+    
+    # Cost tracking fields
+    estimated_cost_usd = Column(Numeric(precision=10, scale=6), nullable=True, comment="Estimated cost in USD for this message")
+    input_cost_per_1k_tokens = Column(Numeric(precision=8, scale=6), nullable=True, comment="Cost per 1000 input tokens used for calculation")
+    output_cost_per_1k_tokens = Column(Numeric(precision=8, scale=6), nullable=True, comment="Cost per 1000 output tokens used for calculation")
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationship to conversation
     conversation = relationship("ChatConversation", back_populates="messages")
+
+class ContextPromptExecution(Base):
+    __tablename__ = "context_prompt_executions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # File information
+    original_filename = Column(String(255), nullable=False)
+    file_type = Column(String(10), nullable=False)
+    file_size_bytes = Column(Integer, nullable=False)
+    processed_content_length = Column(Integer, nullable=True)
+    
+    # Prompt information
+    system_prompt = Column(Text, nullable=False)
+    user_prompt = Column(Text, nullable=False)
+    final_prompt_length = Column(Integer, nullable=True)
+    
+    # LLM response
+    llm_response = Column(Text, nullable=True)
+    method = Column(String(50), nullable=False)
+    provider = Column(String(50), nullable=True)
+    model = Column(String(100), nullable=True)
+    
+    # Performance metrics
+    file_processing_time_ms = Column(Float, nullable=True)
+    llm_execution_time_ms = Column(Float, nullable=True)
+    total_execution_time_ms = Column(Float, nullable=True)
+    
+    # Token usage
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    total_tokens = Column(Integer, nullable=True)
+    
+    # Cost tracking
+    estimated_cost_usd = Column(Numeric(precision=10, scale=6), nullable=True)
+    input_cost_per_1k_tokens = Column(Numeric(precision=8, scale=6), nullable=True)
+    output_cost_per_1k_tokens = Column(Numeric(precision=8, scale=6), nullable=True)
+    
+    # Request tracking
+    request_id = Column(String(50), nullable=True)
+    user_ip = Column(String(45), nullable=True)
+    
+    # Status tracking
+    status = Column(String(20), nullable=False, default='completed')
+    error_message = Column(Text, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
 # Dependency to get DB session
 def get_db() -> Generator:
@@ -245,35 +306,21 @@ def init_db():
             raise
 
 def get_model_info() -> dict:
-    """Get current model information based on provider.
+    """Get current model information.
     
-    Returns information about the currently configured LLM provider
-    and model based on the application settings.
+    Returns information about the currently configured
+    provider and model based on the application settings.
     
     Returns:
         A dictionary containing:
-        - provider: The LLM provider name (azure, openrouter, or custom)
+        - provider: The provider name
         - model: The specific model being used
         
     Examples:
         >>> get_model_info()
-        {'provider': 'azure', 'model': 'gpt-35-turbo'}
-        >>> # With OpenRouter configured:
-        >>> get_model_info()
-        {'provider': 'openrouter', 'model': 'anthropic/claude-2'}
+        {'provider': 'LLM Provider', 'model': 'llama2'}
     """
-    if settings.llm_provider == "azure":
-        return {
-            "provider": "azure",
-            "model": settings.azure_openai_deployment_name
-        }
-    elif settings.llm_provider == "openrouter":
-        return {
-            "provider": "openrouter",
-            "model": settings.openrouter_model
-        }
-    else:  # custom
-        return {
-            "provider": settings.custom_provider_name,
-            "model": settings.custom_model
-        }
+    return {
+        "provider": settings.provider_name,
+        "model": settings.provider_model
+    }

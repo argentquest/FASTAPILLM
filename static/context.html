@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context-Based Prompts - AI Testing Suite</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="alternate icon" href="/static/favicon.ico">
+    <link rel="apple-touch-icon" href="/static/favicon.svg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .top-nav {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .breadcrumb {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .home-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .home-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #6a5acd, #9370db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .tab.active {
+            color: #6a5acd;
+            background: rgba(106, 90, 205, 0.1);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #6a5acd;
+        }
+
+        .tab.completed {
+            color: #28a745;
+        }
+
+        .tab.completed::before {
+            content: '✓ ';
+            color: #28a745;
+        }
+
+        .tab:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .tab-content {
+            padding: 40px;
+            min-height: 500px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .upload-area {
+            border: 3px dashed #6a5acd;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            transition: all 0.3s;
+            background: rgba(106, 90, 205, 0.05);
+            cursor: pointer;
+        }
+
+        .upload-area.dragover {
+            border-color: #9370db;
+            background: rgba(147, 112, 219, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-area.uploading {
+            border-color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #6a5acd;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-info {
+            background: #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .file-details {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 30px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .form-textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .form-textarea:focus {
+            outline: none;
+            border-color: #6a5acd;
+        }
+
+        .form-help {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .method-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .method-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .method-option:hover {
+            border-color: #6a5acd;
+        }
+
+        .method-option.selected {
+            border-color: #6a5acd;
+            background: rgba(106, 90, 205, 0.1);
+            color: #6a5acd;
+        }
+
+        .method-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .method-desc {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #6a5acd, #9370db);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(106, 90, 205, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #6a5acd;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #6a5acd, #9370db);
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .success.show {
+            display: block;
+        }
+
+        .result-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .result-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .result-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .result-content {
+            padding: 25px;
+        }
+
+        .result-response {
+            background: #f8f9fa;
+            border-left: 4px solid #6a5acd;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .metric-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #6a5acd;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .method-selector {
+                flex-direction: column;
+            }
+            
+            .result-meta {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-nav">
+            <div class="breadcrumb">
+                🏠 AI Testing Suite → Context-Based Prompts
+            </div>
+            <a href="/" class="home-btn">
+                🏠 Return to Main Menu
+            </a>
+        </div>
+        
+        <div class="header">
+            <h1>📄 Context-Based Prompts</h1>
+            <p>Upload files and use their content as context in AI conversations</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="upload">
+                <span>1. Upload File</span>
+            </button>
+            <button class="tab" data-tab="system" disabled>
+                <span>2. System Prompt</span>
+            </button>
+            <button class="tab" data-tab="user" disabled>
+                <span>3. User Prompt</span>
+            </button>
+            <button class="tab" data-tab="results" disabled>
+                <span>4. Results</span>
+            </button>
+        </div>
+
+        <div class="tab-content">
+            <!-- Tab 1: File Upload -->
+            <div class="tab-panel active" id="upload">
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Click to upload or drag and drop</div>
+                    <div class="upload-subtext">Supports PDF, CSV, TXT, and JSON files (max 10MB)</div>
+                </div>
+                
+                <input type="file" id="fileInput" class="file-input" 
+                       accept=".pdf,.csv,.txt,.json" multiple="false">
+                
+                <div class="file-info" id="fileInfo">
+                    <div class="file-name" id="fileName"></div>
+                    <div class="file-details" id="fileDetails"></div>
+                </div>
+
+                <div class="progress-bar" id="uploadProgress" style="display: none;">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <div class="loading" id="uploadLoading">
+                    <div class="spinner"></div>
+                    <p>Processing file...</p>
+                </div>
+
+                <div class="error" id="uploadError"></div>
+                <div class="success" id="uploadSuccess"></div>
+
+                <div class="navigation-buttons">
+                    <div></div>
+                    <button class="btn btn-primary" id="continueToSystem" disabled>
+                        Continue to System Prompt →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 2: System Prompt -->
+            <div class="tab-panel" id="system">
+                <div class="form-group">
+                    <label class="form-label" for="systemPrompt">
+                        System Prompt
+                        <span style="color: #dc3545;">*</span>
+                    </label>
+                    <textarea 
+                        class="form-textarea" 
+                        id="systemPrompt" 
+                        placeholder="Enter your system prompt here. Use [context] as a placeholder where you want the file content to be inserted."
+                        rows="10">You are an expert document analyzer and AI assistant. Your task is to carefully analyze the provided document and answer questions about it with accuracy and insight.
+
+Document to analyze:
+[context]
+
+Instructions:
+- Read and understand the document content thoroughly
+- Provide accurate information based solely on the document content
+- If asked about something not covered in the document, clearly state that the information is not available in the provided content
+- Organize your responses clearly with relevant details and examples from the document
+- Be concise but comprehensive in your analysis
+- Maintain a professional and helpful tone
+
+Please provide thoughtful and well-structured responses to any questions about this document.</textarea>
+                    <div class="form-help">
+                        <strong>Important:</strong> Your prompt must contain <code>[context]</code> where you want the file content to be inserted.
+                    </div>
+                </div>
+
+                <div class="error" id="systemError"></div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" id="backToUpload">
+                        ← Back to Upload
+                    </button>
+                    <button class="btn btn-primary" id="continueToUser">
+                        Continue to User Prompt →
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 3: User Prompt -->
+            <div class="tab-panel" id="user">
+                <div class="form-group">
+                    <label class="form-label" for="userPrompt">
+                        User Prompt
+                        <span style="color: #dc3545;">*</span>
+                    </label>
+                    <textarea 
+                        class="form-textarea" 
+                        id="userPrompt" 
+                        placeholder="Enter your specific question or request here."
+                        rows="6">Please provide a comprehensive summary of this document, including:
+
+1. The main topic or purpose
+2. Key points and important details
+3. Any conclusions or recommendations
+4. Notable data, statistics, or findings (if applicable)
+
+Structure your response in a clear, organized manner.</textarea>
+                    <div class="form-help">
+                        This is your specific question or request that will be processed using the file context.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">AI Method</label>
+                    <div class="method-selector">
+                        <div class="method-option selected" data-method="langchain">
+                            <div class="method-title">LangChain</div>
+                            <div class="method-desc">Structured prompt processing</div>
+                        </div>
+                        <div class="method-option" data-method="semantic_kernel">
+                            <div class="method-title">Semantic Kernel</div>
+                            <div class="method-desc">Microsoft's AI framework</div>
+                        </div>
+                        <div class="method-option" data-method="langgraph">
+                            <div class="method-title">LangGraph</div>
+                            <div class="method-desc">Multi-step workflow</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="error" id="userError"></div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" id="backToSystem">
+                        ← Back to System Prompt
+                    </button>
+                    <button class="btn btn-primary" id="executePrompt">
+                        🚀 Execute Prompt
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 4: Results -->
+            <div class="tab-panel" id="results">
+                <div class="loading" id="executionLoading">
+                    <div class="spinner"></div>
+                    <p>Executing prompt with AI...</p>
+                </div>
+
+                <div class="error" id="resultsError"></div>
+
+                <div class="result-container" id="resultContainer" style="display: none;">
+                    <div class="result-header">
+                        <div class="result-title">AI Response</div>
+                        <div class="result-meta" id="resultMeta">
+                            <!-- Metadata will be populated here -->
+                        </div>
+                    </div>
+                    <div class="result-content">
+                        <div class="result-response" id="resultResponse">
+                            <!-- AI response will be populated here -->
+                        </div>
+                        
+                        <div class="metrics-grid" id="metricsGrid">
+                            <!-- Metrics will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation-buttons">
+                    <button class="btn btn-secondary" id="backToUser">
+                        ← Back to User Prompt
+                    </button>
+                    <button class="btn btn-primary" id="startOver">
+                        🔄 Start Over
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Application state
+        let currentTab = 0;
+        let uploadedFile = null;
+        let selectedMethod = 'langchain';
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+            updateTabState();
+        });
+
+        function initializeEventListeners() {
+            // Tab navigation
+            document.querySelectorAll('.tab').forEach((tab, index) => {
+                tab.addEventListener('click', () => {
+                    if (!tab.disabled) {
+                        switchToTab(index);
+                    }
+                });
+            });
+
+            // Navigation buttons
+            document.getElementById('continueToSystem').addEventListener('click', () => switchToTab(1));
+            document.getElementById('backToUpload').addEventListener('click', () => switchToTab(0));
+            document.getElementById('continueToUser').addEventListener('click', validateSystemPrompt);
+            document.getElementById('backToSystem').addEventListener('click', () => switchToTab(1));
+            document.getElementById('executePrompt').addEventListener('click', executeContextPrompt);
+            document.getElementById('backToUser').addEventListener('click', () => switchToTab(2));
+            document.getElementById('startOver').addEventListener('click', startOver);
+
+            // File upload
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.querySelector('.upload-area');
+
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // Drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileSelect({ target: fileInput });
+                }
+            });
+
+            // Method selection
+            document.querySelectorAll('.method-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.method-option').forEach(o => o.classList.remove('selected'));
+                    option.classList.add('selected');
+                    selectedMethod = option.dataset.method;
+                });
+            });
+
+            // System prompt validation
+            document.getElementById('systemPrompt').addEventListener('input', validateSystemPrompt);
+        }
+
+        function switchToTab(tabIndex) {
+            currentTab = tabIndex;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach((tab, index) => {
+                tab.classList.toggle('active', index === tabIndex);
+            });
+
+            // Update tab panels
+            document.querySelectorAll('.tab-panel').forEach((panel, index) => {
+                panel.classList.toggle('active', index === tabIndex);
+            });
+
+            updateTabState();
+        }
+
+        function updateTabState() {
+            const tabs = document.querySelectorAll('.tab');
+            
+            // Enable/disable tabs based on progress
+            tabs[1].disabled = !uploadedFile;
+            tabs[2].disabled = !uploadedFile || !validateSystemPromptContent();
+            tabs[3].disabled = !uploadedFile || !validateSystemPromptContent();
+
+            // Update completed states
+            tabs[0].classList.toggle('completed', uploadedFile);
+            tabs[1].classList.toggle('completed', uploadedFile && validateSystemPromptContent());
+        }
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            const allowedTypes = ['.pdf', '.csv', '.txt', '.json'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedTypes.includes(fileExt)) {
+                showError('uploadError', `Unsupported file type. Please select: ${allowedTypes.join(', ')}`);
+                return;
+            }
+
+            // Validate file size (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showError('uploadError', 'File too large. Maximum size is 10MB.');
+                return;
+            }
+
+            // Show upload progress
+            document.getElementById('uploadLoading').classList.add('show');
+            document.getElementById('uploadError').classList.remove('show');
+            document.querySelector('.upload-area').classList.add('uploading');
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/context/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Upload failed');
+                }
+
+                // Success
+                uploadedFile = result;
+                showFileInfo(file, result);
+                showSuccess('uploadSuccess', 'File uploaded and processed successfully!');
+                document.getElementById('continueToSystem').disabled = false;
+                updateTabState();
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showError('uploadError', error.message);
+            } finally {
+                document.getElementById('uploadLoading').classList.remove('show');
+                document.querySelector('.upload-area').classList.remove('uploading');
+            }
+        }
+
+        function showFileInfo(file, result) {
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileDetails = document.getElementById('fileDetails');
+
+            fileName.textContent = file.name;
+            fileDetails.innerHTML = `
+                Size: ${formatFileSize(file.size)} • 
+                Type: ${result.file_type.toUpperCase()} • 
+                Processed: ${result.processed_content_length.toLocaleString()} characters • 
+                Processing time: ${result.processing_time_ms.toFixed(1)}ms
+            `;
+
+            fileInfo.classList.add('show');
+        }
+
+        function validateSystemPrompt() {
+            const isValid = validateSystemPromptContent();
+            
+            if (isValid) {
+                switchToTab(2);
+            } else {
+                showError('systemError', 'System prompt must contain [context] placeholder');
+            }
+        }
+
+        function validateSystemPromptContent() {
+            const systemPrompt = document.getElementById('systemPrompt').value;
+            return systemPrompt.includes('[context]');
+        }
+
+        async function executeContextPrompt() {
+            if (!uploadedFile) {
+                showError('userError', 'Please upload a file first');
+                return;
+            }
+
+            const systemPrompt = document.getElementById('systemPrompt').value.trim();
+            const userPrompt = document.getElementById('userPrompt').value.trim();
+
+            if (!systemPrompt || !userPrompt) {
+                showError('userError', 'Please fill in both system and user prompts');
+                return;
+            }
+
+            if (!systemPrompt.includes('[context]')) {
+                showError('userError', 'System prompt must contain [context] placeholder');
+                return;
+            }
+
+            // Switch to results tab and show loading
+            switchToTab(3);
+            document.getElementById('executionLoading').classList.add('show');
+            document.getElementById('resultsError').classList.remove('show');
+            document.getElementById('resultContainer').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/context/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        file_id: uploadedFile.file_id,
+                        system_prompt: systemPrompt,
+                        user_prompt: userPrompt,
+                        method: selectedMethod
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Execution failed');
+                }
+
+                // Show results
+                displayResults(result);
+
+            } catch (error) {
+                console.error('Execution error:', error);
+                showError('resultsError', error.message);
+            } finally {
+                document.getElementById('executionLoading').classList.remove('show');
+            }
+        }
+
+        function displayResults(result) {
+            // Update metadata
+            const resultMeta = document.getElementById('resultMeta');
+            resultMeta.innerHTML = `
+                <div><strong>File:</strong> ${result.original_filename}</div>
+                <div><strong>Method:</strong> ${result.method}</div>
+                <div><strong>Model:</strong> ${result.model}</div>
+                <div><strong>Total Time:</strong> ${result.total_execution_time_ms.toFixed(1)}ms</div>
+            `;
+
+            // Update response
+            document.getElementById('resultResponse').textContent = result.llm_response;
+
+            // Update metrics
+            const metricsGrid = document.getElementById('metricsGrid');
+            metricsGrid.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-value">$${result.estimated_cost_usd.toFixed(4)}</div>
+                    <div class="metric-label">Cost</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${result.total_tokens.toLocaleString()}</div>
+                    <div class="metric-label">Total Tokens</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${result.input_tokens.toLocaleString()}</div>
+                    <div class="metric-label">Input Tokens</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${result.output_tokens.toLocaleString()}</div>
+                    <div class="metric-label">Output Tokens</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${result.llm_execution_time_ms.toFixed(1)}ms</div>
+                    <div class="metric-label">LLM Time</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${result.file_processing_time_ms.toFixed(1)}ms</div>
+                    <div class="metric-label">File Processing</div>
+                </div>
+            `;
+
+            document.getElementById('resultContainer').style.display = 'block';
+        }
+
+        function startOver() {
+            currentTab = 0;
+            uploadedFile = null;
+            selectedMethod = 'langchain';
+
+            // Reset form
+            document.getElementById('fileInput').value = '';
+            document.getElementById('systemPrompt').value = '';
+            document.getElementById('userPrompt').value = '';
+
+            // Reset UI
+            document.getElementById('fileInfo').classList.remove('show');
+            document.getElementById('continueToSystem').disabled = true;
+
+            // Clear messages
+            document.querySelectorAll('.error, .success').forEach(el => el.classList.remove('show'));
+
+            // Reset method selection
+            document.querySelectorAll('.method-option').forEach(o => o.classList.remove('selected'));
+            document.querySelector('[data-method="langchain"]').classList.add('selected');
+
+            switchToTab(0);
+        }
+
+        function showError(elementId, message) {
+            const errorEl = document.getElementById(elementId);
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        function showSuccess(elementId, message) {
+            const successEl = document.getElementById(elementId);
+            successEl.textContent = message;
+            successEl.classList.add('show');
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

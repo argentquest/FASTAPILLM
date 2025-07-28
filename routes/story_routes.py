@@ -143,7 +143,11 @@ async def generate_story_handler(
             total_tokens=usage_info["total_tokens"],
             request_id=request_id,
             provider=model_info["provider"],
-            model=model_info["model"]
+            model=model_info["model"],
+            # Cost tracking fields
+            estimated_cost_usd=usage_info["estimated_cost_usd"],
+            input_cost_per_1k_tokens=usage_info["input_cost_per_1k_tokens"],
+            output_cost_per_1k_tokens=usage_info["output_cost_per_1k_tokens"]
         )
         
         db.add(story_record)
@@ -174,7 +178,10 @@ async def generate_story_handler(
             input_tokens=usage_info["input_tokens"],
             output_tokens=usage_info["output_tokens"],
             total_tokens=usage_info["total_tokens"],
-            request_id=request_id
+            request_id=request_id,
+            estimated_cost_usd=usage_info["estimated_cost_usd"],
+            input_cost_per_1k_tokens=usage_info["input_cost_per_1k_tokens"],
+            output_cost_per_1k_tokens=usage_info["output_cost_per_1k_tokens"]
         )
         
     except Exception as e:
@@ -374,13 +381,15 @@ async def get_stories(
             combined_characters=story.combined_characters,
             story_preview=story.story_content[:200] + "..." if len(story.story_content) > 200 else story.story_content,
             method=story.method,
-            provider=story.provider,
             model=story.model,
             generation_time_ms=story.generation_time_ms,
             input_tokens=story.input_tokens,
             output_tokens=story.output_tokens,
             total_tokens=story.total_tokens,
-            created_at=story.created_at.isoformat()
+            created_at=story.created_at.isoformat(),
+            estimated_cost_usd=float(story.estimated_cost_usd) if story.estimated_cost_usd else None,
+            input_cost_per_1k_tokens=float(story.input_cost_per_1k_tokens) if story.input_cost_per_1k_tokens else None,
+            output_cost_per_1k_tokens=float(story.output_cost_per_1k_tokens) if story.output_cost_per_1k_tokens else None
         )
         for story in stories
     ]
@@ -471,13 +480,15 @@ async def search_stories_by_characters(
             combined_characters=story.combined_characters,
             story_preview=story.story_content[:200] + "..." if len(story.story_content) > 200 else story.story_content,
             method=story.method,
-            provider=story.provider,
             model=story.model,
             generation_time_ms=story.generation_time_ms,
             input_tokens=story.input_tokens,
             output_tokens=story.output_tokens,
             total_tokens=story.total_tokens,
-            created_at=story.created_at.isoformat()
+            created_at=story.created_at.isoformat(),
+            estimated_cost_usd=float(story.estimated_cost_usd) if story.estimated_cost_usd else None,
+            input_cost_per_1k_tokens=float(story.input_cost_per_1k_tokens) if story.input_cost_per_1k_tokens else None,
+            output_cost_per_1k_tokens=float(story.output_cost_per_1k_tokens) if story.output_cost_per_1k_tokens else None
         )
         for story in stories
     ]

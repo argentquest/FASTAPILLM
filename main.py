@@ -14,6 +14,14 @@ from logging_config import configure_logging, get_logger
 from routes.story_routes import router as story_router
 from routes.chat_routes import router as chat_router
 from routes.log_routes import router as log_router
+from routes.cost_routes import router as cost_router
+try:
+    from routes.context_routes import router as context_router
+    print("✅ Full context routes loaded successfully")
+except Exception as e:
+    print(f"❌ Error loading full context routes: {e}")
+    from routes.context_routes_simple import router as context_router
+    print("✅ Using simplified context routes")
 from middleware import LoggingMiddleware, ErrorHandlingMiddleware
 from database import init_db
 
@@ -31,7 +39,7 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """Handle application startup and shutdown"""
     # Startup
-    logger.info("Starting AI Story Generator", 
+    logger.info("Starting AI Testing Suite", 
                 version=settings.app_version,
                 environment="development" if settings.debug_mode else "production")
     
@@ -41,7 +49,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("Shutting down AI Story Generator")
+    logger.info("Shutting down AI Testing Suite")
 
 # Create FastAPI app
 app = FastAPI(
@@ -112,6 +120,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(story_router)
 app.include_router(chat_router)
 app.include_router(log_router)
+app.include_router(cost_router)
+app.include_router(context_router)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -120,10 +130,25 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def read_index():
     return FileResponse('static/index.html')
 
+@app.get("/favicon.ico")
+async def read_favicon():
+    """Serve favicon from root path"""
+    return FileResponse('static/favicon.ico')
+
 @app.get("/debug")
 async def read_debug():
     """Debug interface for testing API endpoints"""
     return FileResponse('static/debug.html')
+
+@app.get("/cost")
+async def read_cost():
+    """Cost usage analytics page"""
+    return FileResponse('static/cost.html')
+
+@app.get("/context")
+async def read_context():
+    """Context-based prompts page"""
+    return FileResponse('static/context.html')
 
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
@@ -137,29 +162,12 @@ async def health_check() -> Dict[str, Any]:
 @app.get("/api/provider")
 async def get_provider_info() -> Dict[str, Any]:
     """Get information about the configured LLM provider"""
-    provider_info = {
-        "provider": settings.llm_provider
+    return {
+        "provider_name": settings.provider_name,
+        "model": settings.provider_model,
+        "api_type": settings.provider_api_type,
+        "base_url": settings.provider_api_base_url.split('/')[2] if settings.provider_api_base_url else None
     }
-    
-    if settings.llm_provider == "azure":
-        provider_info.update({
-            "model": settings.azure_openai_deployment_name,
-            "endpoint": settings.azure_openai_endpoint.split('.')[0] + ".***" if settings.azure_openai_endpoint else None
-        })
-    elif settings.llm_provider == "openrouter":
-        provider_info.update({
-            "model": settings.openrouter_model,
-            "available_models": ["openai/gpt-4-turbo-preview", "anthropic/claude-3-opus", "google/gemini-pro", "mistralai/mixtral-8x7b-instruct"]
-        })
-    else:  # custom
-        provider_info.update({
-            "provider_name": settings.custom_provider_name,
-            "model": settings.custom_model,
-            "api_type": settings.custom_api_type,
-            "base_url": settings.custom_api_base_url.split('/')[2] if settings.custom_api_base_url else None
-        })
-    
-    return provider_info
 
 if __name__ == "__main__":
     import uvicorn
