@@ -171,9 +171,12 @@ async def generate_story_handler(
                    request_id=request_id)
         
         return StoryResponse(
+            id=story_record.id,
             story=story,
-            combined_characters=f"{request.primary_character} and {request.secondary_character}",
-            method=method_name,
+            primary_character=request.primary_character,
+            secondary_character=request.secondary_character,
+            framework=service_name,
+            created_at=story_record.created_at.isoformat(),
             generation_time_ms=round(ai_generation_time, 2),
             input_tokens=usage_info["input_tokens"],
             output_tokens=usage_info["output_tokens"],
@@ -380,7 +383,7 @@ async def get_stories(
             secondary_character=story.secondary_character,
             combined_characters=story.combined_characters,
             story_preview=story.story_content[:200] + "..." if len(story.story_content) > 200 else story.story_content,
-            method=story.method,
+            framework=story.method,
             model=story.model,
             generation_time_ms=story.generation_time_ms,
             input_tokens=story.input_tokens,
@@ -479,7 +482,7 @@ async def search_stories_by_characters(
             secondary_character=story.secondary_character,
             combined_characters=story.combined_characters,
             story_preview=story.story_content[:200] + "..." if len(story.story_content) > 200 else story.story_content,
-            method=story.method,
+            framework=story.method,
             model=story.model,
             generation_time_ms=story.generation_time_ms,
             input_tokens=story.input_tokens,
@@ -492,3 +495,40 @@ async def search_stories_by_characters(
         )
         for story in stories
     ]
+
+
+@router.delete("/stories")
+async def delete_all_stories(
+    db: Session = Depends(get_db)
+):
+    """Delete all generated stories.
+    
+    Removes all stories from the database. This action cannot be undone.
+    
+    Returns:
+        Dict with success message and count of deleted stories.
+    """
+    logger.info("Delete all stories request received")
+    
+    try:
+        # Count stories before deletion
+        story_count = db.query(Story).count()
+        
+        # Delete all stories
+        db.query(Story).delete()
+        db.commit()
+        
+        logger.info("All stories deleted successfully", deleted_count=story_count)
+        
+        return {
+            "message": f"Successfully deleted {story_count} stories",
+            "deleted_count": story_count
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed to delete all stories", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete stories: {str(e)}"
+        )

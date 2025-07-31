@@ -40,9 +40,12 @@ class StoryRequest(BaseModel):
 
 class StoryResponse(BaseModel):
     """Response model for story generation"""
+    id: Optional[int] = Field(None, description="Story ID from database")
     story: str = Field(..., description="Generated story content")
-    combined_characters: str = Field(..., description="Combined character names")
-    method: str = Field(..., description="AI framework used for generation")
+    primary_character: str = Field(..., description="Primary character name")
+    secondary_character: str = Field(..., description="Secondary character name")
+    framework: str = Field(..., description="AI framework used for generation")
+    created_at: Optional[str] = Field(None, description="Creation timestamp")
     generation_time_ms: Optional[float] = Field(None, description="Time taken to generate the story")
     input_tokens: Optional[int] = Field(None, description="Number of input tokens used")
     output_tokens: Optional[int] = Field(None, description="Number of output tokens generated")
@@ -83,7 +86,7 @@ class StoryList(BaseModel):
     secondary_character: str
     combined_characters: str
     story_preview: str
-    method: str
+    framework: str
     model: str
     generation_time_ms: Optional[float]
     input_tokens: Optional[int]

@@ -64,6 +64,19 @@ services:
     profiles:
       - production
 
+  # React Frontend
+  react-frontend:
+    build:
+      context: ./frontendReact
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - ai-content-platform
+    restart: unless-stopped
+    networks:
+      - default
+
   # Optional: Nginx reverse proxy
   nginx:
     image: nginx:alpine

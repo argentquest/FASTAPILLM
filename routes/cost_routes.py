@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_
@@ -8,12 +8,39 @@ from schemas.cost import (
     CostUsageResponse, CostSummary, CostByMethod, CostByModel, 
     DailyCostUsage, RecentRequest
 )
+from pydantic import BaseModel
+from typing import Literal
 from database import get_db, Story, ChatMessage, ChatConversation, ContextPromptExecution
 from logging_config import get_logger
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/cost", tags=["cost"])
+
+
+class Transaction(BaseModel):
+    """Individual transaction details"""
+    id: int
+    type: Literal["story", "chat", "context"]
+    method: str
+    model: str
+    created_at: datetime
+    primary_character: Optional[str] = None
+    secondary_character: Optional[str] = None
+    conversation_title: Optional[str] = None
+    content_preview: Optional[str] = None
+    input_tokens: Optional[int]
+    output_tokens: Optional[int]
+    total_tokens: Optional[int]
+    estimated_cost_usd: Optional[float]
+    generation_time_ms: Optional[float]
+
+
+class TransactionsResponse(BaseModel):
+    """Response containing all transactions"""
+    transactions: List[Transaction]
+    total_cost: float
+    transaction_count: int
 
 
 @router.get("/usage", response_model=CostUsageResponse)
@@ -550,4 +577,187 @@ async def get_cost_summary(
         total_tokens=total_tokens,
         average_cost_per_request=round(total_cost / total_requests, 6) if total_requests > 0 else 0.0,
         average_tokens_per_request=round(total_tokens / total_requests, 2) if total_requests > 0 else 0.0
+    )
+
+
+@router.delete("/usage")
+async def clear_all_cost_data(
+    db: Session = Depends(get_db)
+):
+    """Clear all cost tracking data.
+    
+    Removes all cost data from stories, chat messages, and context executions.
+    This action cannot be undone.
+    
+    Returns:
+        Dict with success message and count of cleared records.
+    """
+    logger.info("Clear all cost data request received")
+    
+    try:
+        # Count records before deletion
+        story_count = db.query(Story).count()
+        chat_message_count = db.query(ChatMessage).count()
+        chat_conversation_count = db.query(ChatConversation).count()
+        context_count = db.query(ContextPromptExecution).count()
+        total_count = story_count + chat_message_count + chat_conversation_count + context_count
+        
+        # Delete all records with cost data
+        # For conversations, let cascade handle the messages automatically
+        deleted_conversations = db.query(ChatConversation).delete()
+        deleted_contexts = db.query(ContextPromptExecution).delete()
+        deleted_stories = db.query(Story).delete()
+        
+        db.commit()
+        
+        # After commit, count remaining records to verify complete deletion
+        remaining_stories = db.query(Story).count()
+        remaining_conversations = db.query(ChatConversation).count()
+        remaining_messages = db.query(ChatMessage).count()
+        remaining_contexts = db.query(ContextPromptExecution).count()
+        
+        actual_deleted = deleted_conversations + deleted_contexts + deleted_stories
+        
+        logger.info("All cost data cleared successfully", 
+                   stories_deleted=deleted_stories,
+                   chat_conversations_deleted=deleted_conversations,
+                   contexts_deleted=deleted_contexts,
+                   total_deleted=actual_deleted,
+                   remaining_stories=remaining_stories,
+                   remaining_conversations=remaining_conversations,
+                   remaining_messages=remaining_messages,
+                   remaining_contexts=remaining_contexts)
+        
+        if remaining_stories == 0 and remaining_conversations == 0 and remaining_messages == 0 and remaining_contexts == 0:
+            return {
+                "message": f"Successfully cleared all cost records (Stories: {deleted_stories}, Conversations: {deleted_conversations}, Contexts: {deleted_contexts})",
+                "deleted_count": actual_deleted
+            }
+        else:
+            return {
+                "message": f"Partially cleared cost records. Remaining: {remaining_stories + remaining_conversations + remaining_messages + remaining_contexts} records",
+                "deleted_count": actual_deleted,
+                "warning": f"Some records remain: Stories: {remaining_stories}, Conversations: {remaining_conversations}, Messages: {remaining_messages}, Contexts: {remaining_contexts}"
+            }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed to clear cost data", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to clear cost data: {str(e)}"
+        )
+
+
+@router.get("/transactions", response_model=TransactionsResponse)
+async def get_all_transactions(
+    days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
+    db: Session = Depends(get_db)
+):
+    """Get all individual transactions (not aggregated by day).
+    
+    Returns all AI API calls with their costs as individual transactions.
+    """
+    logger.info("All transactions requested", days=days)
+    
+    # Calculate date range
+    end_date = datetime.utcnow()
+    start_date = end_date - timedelta(days=days)
+    
+    transactions = []
+    
+    # Get all stories
+    stories = db.query(Story).filter(
+        and_(
+            Story.created_at >= start_date,
+            Story.created_at <= end_date,
+            Story.estimated_cost_usd.isnot(None)
+        )
+    ).order_by(desc(Story.created_at)).all()
+    
+    for story in stories:
+        transactions.append(Transaction(
+            id=story.id,
+            type="story",
+            method=story.method,
+            model=story.model or "unknown",
+            created_at=story.created_at,
+            primary_character=story.primary_character,
+            secondary_character=story.secondary_character,
+            content_preview=story.story_content[:100] + "..." if story.story_content else None,
+            input_tokens=story.input_tokens,
+            output_tokens=story.output_tokens,
+            total_tokens=story.total_tokens,
+            estimated_cost_usd=float(story.estimated_cost_usd) if story.estimated_cost_usd else 0,
+            generation_time_ms=story.generation_time_ms
+        ))
+    
+    # Get all chat messages
+    chat_messages = db.query(ChatMessage, ChatConversation).join(
+        ChatConversation
+    ).filter(
+        and_(
+            ChatMessage.created_at >= start_date,
+            ChatMessage.created_at <= end_date,
+            ChatMessage.role == 'assistant',
+            ChatMessage.estimated_cost_usd.isnot(None)
+        )
+    ).order_by(desc(ChatMessage.created_at)).all()
+    
+    for msg, conv in chat_messages:
+        transactions.append(Transaction(
+            id=msg.id,
+            type="chat",
+            method=conv.method,
+            model=conv.model or "unknown",
+            created_at=msg.created_at,
+            conversation_title=conv.title,
+            content_preview=msg.content[:100] + "..." if msg.content else None,
+            input_tokens=msg.input_tokens,
+            output_tokens=msg.output_tokens,
+            total_tokens=msg.total_tokens,
+            estimated_cost_usd=float(msg.estimated_cost_usd) if msg.estimated_cost_usd else 0,
+            generation_time_ms=msg.generation_time_ms
+        ))
+    
+    # Get all context executions
+    context_executions = db.query(ContextPromptExecution).filter(
+        and_(
+            ContextPromptExecution.created_at >= start_date,
+            ContextPromptExecution.created_at <= end_date,
+            ContextPromptExecution.status == 'completed',
+            ContextPromptExecution.estimated_cost_usd.isnot(None)
+        )
+    ).order_by(desc(ContextPromptExecution.created_at)).all()
+    
+    for context in context_executions:
+        transactions.append(Transaction(
+            id=context.id,
+            type="context",
+            method=context.method,
+            model=context.model or "unknown",
+            created_at=context.created_at,
+            primary_character=context.original_filename,
+            content_preview=context.llm_response[:100] + "..." if context.llm_response else None,
+            input_tokens=context.input_tokens,
+            output_tokens=context.output_tokens,
+            total_tokens=context.total_tokens,
+            estimated_cost_usd=float(context.estimated_cost_usd) if context.estimated_cost_usd else 0,
+            generation_time_ms=context.total_execution_time_ms
+        ))
+    
+    # Sort all transactions by date
+    transactions.sort(key=lambda x: x.created_at, reverse=True)
+    
+    # Calculate total cost
+    total_cost = sum(t.estimated_cost_usd for t in transactions)
+    
+    logger.info("Transactions fetched",
+               transaction_count=len(transactions),
+               total_cost=total_cost)
+    
+    return TransactionsResponse(
+        transactions=transactions,
+        total_cost=round(total_cost, 6),
+        transaction_count=len(transactions)
     )

@@ -18,7 +18,7 @@ class ChatMessageResponse(BaseModel):
     input_tokens: Optional[int]
     output_tokens: Optional[int] 
     total_tokens: Optional[int]
-    created_at: datetime
+    created_at: str
     estimated_cost_usd: Optional[float]
     input_cost_per_1k_tokens: Optional[float]
     output_cost_per_1k_tokens: Optional[float]
@@ -33,8 +33,8 @@ class ChatConversationResponse(BaseModel):
     title: str
     method: str
     model: Optional[str]
-    created_at: datetime
-    updated_at: datetime
+    created_at: str
+    updated_at: str
     messages: List[ChatMessageResponse]
 
     class Config:
