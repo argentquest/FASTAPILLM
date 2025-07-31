@@ -178,3 +178,5 @@ alembic/versions/*.py
 *.temp
 .temp
 .tmp
+
+stories.db
