@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -17,7 +17,7 @@ class FileUploadResponse(BaseModel):
 
 class ContextPromptRequest(BaseModel):
     """Request model for context prompt execution"""
-    file_id: str = Field(..., description="ID of the uploaded file to use as context")
+    file_ids: List[str] = Field(..., min_items=1, description="IDs of the uploaded files to use as context")
     system_prompt: str = Field(..., min_length=1, description="System prompt containing [context] placeholder")
     user_prompt: str = Field(..., min_length=1, description="User's input prompt")
     method: str = Field(default="langchain", description="AI method to use (semantic_kernel, langchain, langgraph)")

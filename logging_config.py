@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 import os
 import re
+import sys
 from datetime import datetime
 
 
@@ -208,12 +209,33 @@ def configure_logging(
         
         print(f"File logging enabled: {log_file_path} (rotation: {rotation_hours}h, retention: {retention_days}d)")
     
-    # Configure standard logging - only console handler for now
+    # Configure standard logging to intercept non-structlog messages
     logging.basicConfig(
         level=level,
         handlers=[console_handler],  # Only console handler in basicConfig
         format="%(message)s"
     )
+    
+    # Configure third-party loggers to use consistent formatting
+    third_party_loggers = [
+        'uvicorn', 'uvicorn.access', 'uvicorn.error', 'fastapi',
+        'sqlalchemy.engine', 'sqlalchemy', 'alembic'
+    ]
+    
+    for logger_name in third_party_loggers:
+        third_party_logger = logging.getLogger(logger_name)
+        # In debug mode, let them propagate to get colored output
+        if debug:
+            third_party_logger.propagate = True
+        else:
+            third_party_logger.handlers = [console_handler]
+            third_party_logger.propagate = False
+    
+    # Set SQLAlchemy engine logging to INFO level to reduce noise but keep colors
+    if debug:
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    else:
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
     
     # Configure structlog with dual output support
     processors = [
@@ -239,7 +261,15 @@ def configure_logging(
     
     # Choose renderer based on output type (for console)
     if debug:
-        processors.append(structlog.dev.ConsoleRenderer())
+        # Use colored console renderer with pretty formatting
+        # Force colors if stdout is a terminal or if we're in development
+        use_colors = sys.stdout.isatty() or os.getenv('FORCE_COLOR') == '1' or debug
+        processors.append(structlog.dev.ConsoleRenderer(
+            colors=use_colors,
+            force_colors=use_colors,
+            repr_native_str=False,
+            exception_formatter=structlog.dev.plain_traceback
+        ))
     else:
         processors.append(structlog.processors.JSONRenderer())
     

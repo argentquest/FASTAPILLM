@@ -116,7 +116,12 @@ class Settings(BaseSettings):
     # Settings for security, CORS, and request limits
     # Allowed CORS origins - list of URLs that can make requests to the API
     # Examples: ["http://localhost:3000", "https://yourdomain.com"]
-    cors_origins: list[str] = Field(default=["http://localhost:8000"], env="CORS_ORIGINS")
+    cors_origins: list[str] = Field(default=[
+        "http://localhost:8000",      # Backend self-reference
+        "http://localhost:3000",      # React production frontend
+        "http://localhost:3001",      # React development frontend
+        "http://localhost:5173"       # Vite default port
+    ], env="CORS_ORIGINS")
     
     # Maximum HTTP request size in bytes (default: 1MB)
     # Prevents large payloads from overwhelming the server

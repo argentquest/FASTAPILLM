@@ -365,9 +365,48 @@ async def handle_chat_message(
                conversation_length=len(full_conversation.messages) if full_conversation else 0,
                request_id=request_id)
     
+    # Create response with proper date formatting
+    conversation_response = ChatConversationResponse(
+        id=full_conversation.id,
+        title=full_conversation.title,
+        method=full_conversation.method,
+        model=full_conversation.model,
+        created_at=full_conversation.created_at.isoformat() + 'Z' if full_conversation.created_at else None,
+        updated_at=full_conversation.updated_at.isoformat() + 'Z' if full_conversation.updated_at else None,
+        messages=[
+            ChatMessageResponse(
+                id=msg.id,
+                role=msg.role,
+                content=msg.content,
+                generation_time_ms=msg.generation_time_ms,
+                input_tokens=msg.input_tokens,
+                output_tokens=msg.output_tokens,
+                total_tokens=msg.total_tokens,
+                created_at=msg.created_at.isoformat() + 'Z' if msg.created_at else None,
+                estimated_cost_usd=float(msg.estimated_cost_usd) if msg.estimated_cost_usd else None,
+                input_cost_per_1k_tokens=float(msg.input_cost_per_1k_tokens) if msg.input_cost_per_1k_tokens else None,
+                output_cost_per_1k_tokens=float(msg.output_cost_per_1k_tokens) if msg.output_cost_per_1k_tokens else None
+            ) for msg in full_conversation.messages
+        ]
+    )
+    
+    message_response = ChatMessageResponse(
+        id=ai_message.id,
+        role=ai_message.role,
+        content=ai_message.content,
+        generation_time_ms=ai_message.generation_time_ms,
+        input_tokens=ai_message.input_tokens,
+        output_tokens=ai_message.output_tokens,
+        total_tokens=ai_message.total_tokens,
+        created_at=ai_message.created_at.isoformat() + 'Z' if ai_message.created_at else None,
+        estimated_cost_usd=float(ai_message.estimated_cost_usd) if ai_message.estimated_cost_usd else None,
+        input_cost_per_1k_tokens=float(ai_message.input_cost_per_1k_tokens) if ai_message.input_cost_per_1k_tokens else None,
+        output_cost_per_1k_tokens=float(ai_message.output_cost_per_1k_tokens) if ai_message.output_cost_per_1k_tokens else None
+    )
+    
     return ChatResponse(
-        conversation=ChatConversationResponse.from_orm(full_conversation),
-        message=ChatMessageResponse.from_orm(ai_message),
+        conversation=conversation_response,
+        message=message_response,
         request_id=request_id
     )
 
@@ -435,8 +474,8 @@ async def get_conversations(
             model=conv.model,
             message_count=message_count,
             last_message_preview=last_message_preview,
-            created_at=conv.created_at.isoformat(),
-            updated_at=conv.updated_at.isoformat()
+            created_at=conv.created_at.isoformat() + 'Z' if conv.created_at else None,
+            updated_at=conv.updated_at.isoformat() + 'Z' if conv.updated_at else None
         ))
     
     return result
@@ -481,7 +520,30 @@ async def get_conversation(
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
     
-    return ChatConversationResponse.from_orm(conversation)
+    # Create response with proper date formatting
+    return ChatConversationResponse(
+        id=conversation.id,
+        title=conversation.title,
+        method=conversation.method,
+        model=conversation.model,
+        created_at=conversation.created_at.isoformat() + 'Z' if conversation.created_at else None,
+        updated_at=conversation.updated_at.isoformat() + 'Z' if conversation.updated_at else None,
+        messages=[
+            ChatMessageResponse(
+                id=msg.id,
+                role=msg.role,
+                content=msg.content,
+                generation_time_ms=msg.generation_time_ms,
+                input_tokens=msg.input_tokens,
+                output_tokens=msg.output_tokens,
+                total_tokens=msg.total_tokens,
+                created_at=msg.created_at.isoformat() + 'Z' if msg.created_at else None,
+                estimated_cost_usd=float(msg.estimated_cost_usd) if msg.estimated_cost_usd else None,
+                input_cost_per_1k_tokens=float(msg.input_cost_per_1k_tokens) if msg.input_cost_per_1k_tokens else None,
+                output_cost_per_1k_tokens=float(msg.output_cost_per_1k_tokens) if msg.output_cost_per_1k_tokens else None
+            ) for msg in conversation.messages
+        ]
+    )
 
 @router.delete("/conversations/{conversation_id}")
 async def delete_conversation(
@@ -518,3 +580,40 @@ async def delete_conversation(
     db.commit()
     
     return {"message": "Conversation deleted successfully"}
+
+@router.delete("/conversations")
+async def delete_all_conversations(
+    db: Session = Depends(get_db)
+):
+    """Delete all conversations and messages.
+    
+    Permanently removes all conversations and associated messages
+    from the database. This action cannot be undone.
+    
+    Args:
+        db: Database session (injected).
+        
+    Returns:
+        Dict with success message and count of deleted conversations.
+        
+    Examples:
+        >>> DELETE /api/chat/conversations
+        {"message": "All conversations deleted successfully", "deleted_count": 15}
+    """
+    # Count conversations before deletion
+    conversation_count = db.query(ChatConversation).count()
+    
+    # Delete all chat messages first (due to foreign key constraints)
+    db.query(ChatMessage).delete()
+    
+    # Delete all conversations
+    db.query(ChatConversation).delete()
+    
+    db.commit()
+    
+    logger.info("All chat conversations deleted", deleted_count=conversation_count)
+    
+    return {
+        "message": "All conversations deleted successfully",
+        "deleted_count": conversation_count
+    }

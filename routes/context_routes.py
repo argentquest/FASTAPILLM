@@ -15,7 +15,11 @@ from schemas.context import (
 )
 from database import get_db, ContextPromptExecution, get_model_info
 from utils.file_processors import FileProcessor, FileProcessingError, is_supported_file, validate_file_size
-from services.story_services import LangChainService, SemanticKernelService, LangGraphService
+from services.context_services import (
+    LangChainContextService, 
+    SemanticKernelContextService, 
+    LangGraphContextService
+)
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -25,24 +29,24 @@ router = APIRouter(prefix="/api/context", tags=["context"])
 # In-memory storage for temporary files (in production, use Redis or database)
 temp_files = {}
 
-# Service instances (lazy loaded)
-_services = {
-    "semantic_kernel": None,
+# Context service instances (lazy loaded)
+_context_services = {
+    "semantic-kernel": None,
     "langchain": None,
     "langgraph": None
 }
 
-def get_service(service_name: str):
-    """Lazy load service instances"""
-    if _services[service_name] is None:
-        logger.info(f"Initializing {service_name} service for context prompts")
-        if service_name == "semantic_kernel":
-            _services[service_name] = SemanticKernelService()
+def get_context_service(service_name: str):
+    """Lazy load context service instances"""
+    if _context_services[service_name] is None:
+        logger.info(f"Initializing {service_name} context service for prompt execution")
+        if service_name == "semantic-kernel":
+            _context_services[service_name] = SemanticKernelContextService()
         elif service_name == "langchain":
-            _services[service_name] = LangChainService()
+            _context_services[service_name] = LangChainContextService()
         elif service_name == "langgraph":
-            _services[service_name] = LangGraphService()
-    return _services[service_name]
+            _context_services[service_name] = LangGraphContextService()
+    return _context_services[service_name]
 
 
 @router.post("/upload", response_model=FileUploadResponse)
@@ -203,7 +207,8 @@ async def execute_context_prompt(
     user_ip = request.client.host if request.client else None
     
     logger.info("Context prompt execution started",
-               file_id=request_data.file_id,
+               file_ids=request_data.file_ids,
+               file_count=len(request_data.file_ids),
                method=request_data.method,
                system_prompt_length=len(request_data.system_prompt),
                user_prompt_length=len(request_data.user_prompt),
@@ -223,21 +228,38 @@ async def execute_context_prompt(
     )
     
     try:
-        # Validate file exists
-        if request_data.file_id not in temp_files:
+        # Validate all files exist
+        missing_files = [fid for fid in request_data.file_ids if fid not in temp_files]
+        if missing_files:
             raise HTTPException(
                 status_code=404, 
-                detail="File not found. Please upload a file first."
+                detail=f"Files not found: {', '.join(missing_files)}. Please upload files first."
             )
         
-        file_data = temp_files[request_data.file_id]
+        # Collect all file data and combine content
+        combined_content = []
+        filenames = []
+        file_types = []
+        total_size = 0
+        total_processing_time = 0
         
-        # Update execution record with file info
-        execution_record.original_filename = file_data['original_filename']
-        execution_record.file_type = file_data['file_type']
-        execution_record.file_size_bytes = file_data['file_size_bytes']
-        execution_record.processed_content_length = file_data['processed_content_length']
-        execution_record.file_processing_time_ms = file_data['processing_time_ms']
+        for file_id in request_data.file_ids:
+            file_data = temp_files[file_id]
+            combined_content.append(f"\n\n--- File: {file_data['original_filename']} ---\n{file_data['processed_content']}")
+            filenames.append(file_data['original_filename'])
+            file_types.append(file_data['file_type'])
+            total_size += file_data['file_size_bytes']
+            total_processing_time += file_data['processing_time_ms']
+        
+        combined_content_str = ''.join(combined_content)
+        combined_file_type = 'multiple' if len(file_types) > 1 else file_types[0]
+        
+        # Update execution record with combined file info
+        execution_record.original_filename = ', '.join(filenames)
+        execution_record.file_type = combined_file_type
+        execution_record.file_size_bytes = total_size
+        execution_record.processed_content_length = len(combined_content_str)
+        execution_record.file_processing_time_ms = total_processing_time
         
         # Validate system prompt contains [context] placeholder
         if '[context]' not in request_data.system_prompt:
@@ -251,17 +273,17 @@ async def execute_context_prompt(
                 detail="System prompt must contain [context] placeholder"
             )
         
-        # Replace [context] with processed file content
+        # Replace [context] with combined file content
         final_system_prompt = request_data.system_prompt.replace(
             '[context]', 
-            file_data['processed_content']
+            combined_content_str
         )
         
         execution_record.final_prompt_length = len(final_system_prompt)
         
         logger.debug("Executing context prompt",
-                    file_id=request_data.file_id,
-                    filename=file_data['original_filename'],
+                    file_ids=request_data.file_ids,
+                    filenames=filenames,
                     final_prompt_length=len(final_system_prompt),
                     method=request_data.method)
         
@@ -270,12 +292,12 @@ async def execute_context_prompt(
         execution_record.provider = model_info["provider"]
         execution_record.model = model_info["model"]
         
-        # Execute with LLM
+        # Execute with LLM using context service
         llm_start_time = time.time()
-        service = get_service(request_data.method)
+        context_service = get_context_service(request_data.method)
         
-        # Use the generate_content method with the final prompt and user prompt
-        llm_response, usage_info = await service.generate_content(
+        # Use the execute_prompt method for direct prompt execution (not story generation)
+        llm_response, usage_info = await context_service.execute_prompt(
             final_system_prompt,
             request_data.user_prompt
         )
@@ -301,19 +323,21 @@ async def execute_context_prompt(
         db.commit()
         db.refresh(execution_record)
         
-        # Clean up temporary file
-        try:
-            os.unlink(file_data['file_path'])
-            del temp_files[request_data.file_id]
-        except Exception as cleanup_error:
-            logger.warning("Failed to clean up temporary file",
-                          file_id=request_data.file_id,
-                          error=str(cleanup_error))
+        # Clean up temporary files
+        for file_id in request_data.file_ids:
+            try:
+                file_data = temp_files[file_id]
+                os.unlink(file_data['file_path'])
+                del temp_files[file_id]
+            except Exception as cleanup_error:
+                logger.warning("Failed to clean up temporary file",
+                              file_id=file_id,
+                              error=str(cleanup_error))
         
         logger.info("Context prompt execution completed successfully",
                    execution_id=execution_record.id,
-                   file_id=request_data.file_id,
-                   filename=file_data['original_filename'],
+                   file_ids=request_data.file_ids,
+                   filenames=filenames,
                    method=request_data.method,
                    response_length=len(llm_response),
                    llm_execution_time_ms=round(llm_execution_time, 2),
@@ -326,11 +350,11 @@ async def execute_context_prompt(
         return ContextPromptResponse(
             id=execution_record.id,
             llm_response=llm_response,
-            original_filename=file_data['original_filename'],
-            file_type=file_data['file_type'],
-            processed_content_length=file_data['processed_content_length'],
+            original_filename=', '.join(filenames),
+            file_type=combined_file_type,
+            processed_content_length=len(combined_content_str),
             final_prompt_length=len(final_system_prompt),
-            file_processing_time_ms=file_data['processing_time_ms'],
+            file_processing_time_ms=total_processing_time,
             llm_execution_time_ms=round(llm_execution_time, 2),
             total_execution_time_ms=round(total_execution_time, 2),
             input_tokens=usage_info["input_tokens"],
@@ -359,7 +383,7 @@ async def execute_context_prompt(
         db.commit()
         
         logger.error("Context prompt execution failed",
-                    file_id=request_data.file_id,
+                    file_ids=request_data.file_ids,
                     method=request_data.method,
                     error=str(e),
                     error_type=type(e).__name__,
@@ -370,6 +394,69 @@ async def execute_context_prompt(
             status_code=500,
             detail=f"Execution failed: {str(e)}"
         )
+
+
+@router.get("/files")
+async def get_uploaded_files(request: Request):
+    """Get list of uploaded files.
+    
+    Returns a list of currently uploaded files with their metadata.
+    """
+    request_id = getattr(request.state, 'request_id', None)
+    logger.info("Fetching uploaded files list", request_id=request_id)
+    
+    files_list = []
+    for file_id, file_info in temp_files.items():
+        files_list.append({
+            "id": file_id,
+            "name": file_info['original_filename'],
+            "size": file_info['file_size_bytes'],
+            "upload_date": file_info['created_at'].isoformat()
+        })
+    
+    logger.info("Files list retrieved", 
+                file_count=len(files_list), 
+                request_id=request_id)
+    
+    return files_list
+
+
+@router.delete("/files/{file_id}")
+async def delete_uploaded_file(
+    file_id: str,
+    request: Request
+):
+    """Delete an uploaded file."""
+    request_id = getattr(request.state, 'request_id', None)
+    
+    if file_id not in temp_files:
+        logger.warning("File not found for deletion", 
+                      file_id=file_id, 
+                      request_id=request_id)
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    file_info = temp_files[file_id]
+    filename = file_info['original_filename']
+    
+    # Clean up temp file
+    try:
+        if os.path.exists(file_info['file_path']):
+            os.unlink(file_info['file_path'])
+    except Exception as e:
+        logger.warning("Error deleting temp file", 
+                      file_path=file_info['file_path'],
+                      error=str(e),
+                      request_id=request_id)
+    
+    # Remove from memory
+    del temp_files[file_id]
+    
+    logger.info("File deleted successfully", 
+                file_id=file_id,
+                filename=filename,
+                request_id=request_id)
+    
+    return {"message": "File deleted successfully"}
 
 
 @router.get("/executions", response_model=List[ContextExecutionList])
