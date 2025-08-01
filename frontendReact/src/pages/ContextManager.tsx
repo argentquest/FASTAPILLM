@@ -23,11 +23,7 @@ const ContextManager: React.FC = () => {
     contextApi.getFiles
   );
   
-  // Fetch execution history
-  const { data: executions, refetch: refetchExecutions } = useQuery(
-    'contextExecutions',
-    contextApi.getExecutions
-  );
+  // Note: Execution history was removed to simplify the interface
 
   // Upload files mutation
   const { mutate: uploadFiles, loading: uploading } = useApiMutation(
@@ -52,7 +48,6 @@ const ContextManager: React.FC = () => {
     {
       onSuccess: (result) => {
         setExecutionResult(result.llm_response);
-        refetchExecutions();
       },
       successMessage: 'Prompt executed successfully!'
     }

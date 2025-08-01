@@ -10,65 +10,46 @@ This will tell you exactly what you need to install.
 
 ## 🚀 Running Your AI Story Generator
 
-You now have **3 different frontend options** with the same backend. Here's how to run them:
+You now have a modern React frontend with the backend. Here's how to run them:
 
-### Option 1: Original Application (Monolithic)
+### Option 1: Backend Only (Recommended)
 ```bash
-# Run the original combined application
-python main.py
+# Run the backend application with embedded MCP server
+python backend/main.py
 
 # Access at: http://localhost:8000
+# MCP endpoint: http://localhost:9999/mcp
 ```
 
-### Option 2: Separated with Alpine.js Frontend
+### Option 2: Backend with React Frontend
 ```bash
 # Terminal 1 - Backend API
-python run-backends.py
+python backend/main.py
 
-# Terminal 2 - Alpine.js Frontend
-cd frontend
-python -m http.server 3000
+# Terminal 2 - React Frontend
+cd frontendReact
+npm install  # First time only
+npm run dev
 
 # Access:
 # - Backend API: http://localhost:8000 (helpful landing page)
 # - API Docs: http://localhost:8000/api/docs
-# - Alpine.js Frontend: http://localhost:3000
+# - React Frontend: http://localhost:3001
+# - MCP Server: http://localhost:9999/mcp
 ```
 
-### Option 3: Separated with React Frontend
-
-**Prerequisites:** Node.js 18+ and npm
-
+### Option 3: Docker Deployment
 ```bash
-# Terminal 1 - Backend API  
-python run-backends.py
-
-# Terminal 2 - React Frontend (first time setup)
-cd frontendReact
-npm install  # Installs Vite, React, TypeScript, etc.
-npm run dev
+# Run with Docker (React frontend + backend)
+docker-compose -f docker-compose.separated.yml up --build
 
 # Access:
 # - Backend API: http://localhost:8000
 # - React Frontend: http://localhost:3001
+# - MCP Server: http://localhost:9999/mcp
 ```
 
-### Option 4: Run Both Frontends + Backend
-```bash
-# Terminal 1 - Backend
-python run-backends.py
-
-# Terminal 2 - Alpine.js Frontend
-cd frontend && python -m http.server 3000
-
-# Terminal 3 - React Frontend  
-cd frontendReact && npm run dev
-
-# Access all three:
-# - Backend API: http://localhost:8000/api/docs
-# - Alpine.js Frontend: http://localhost:3000
-# - React Frontend: http://localhost:3001
-```
+**Note**: The Alpine.js frontend has been removed from the codebase. Only React frontend is available now.
 
 ## 🔧 VSCode Integration
 
@@ -76,8 +57,8 @@ cd frontendReact && npm run dev
 1. Press `Ctrl+Shift+P`
 2. Type "Tasks: Run Task"
 3. Choose:
-   - **"Run All (Alpine.js)"** - Backend + Alpine.js
-   - **"Run All (React)"** - Backend + React
+   - **"Run Backend Only"** - Backend with MCP server
+   - **"Run All (React)"** - Backend + React frontend
 
 ### Using Debug/Launch
 1. Go to Run & Debug (`Ctrl+Shift+D`)
@@ -92,8 +73,8 @@ docker-compose -f docker-compose.separated.yml up --build
 
 # Access:
 # - Backend: http://localhost:8000
-# - Alpine.js Frontend: http://localhost:3000  
 # - React Frontend: http://localhost:3001
+# - MCP Server: http://localhost:9999/mcp
 ```
 
 ## ❗ Important Notes
@@ -128,17 +109,20 @@ docker-compose -f docker-compose.separated.yml up --build
    - `OPENROUTER_API_KEY`, or
    - Your custom OpenAI-compatible API settings
 
-## 🎯 Which Frontend to Choose?
+5. **MCP Integration**: The platform includes built-in MCP server support:
+   - Automatically starts with the backend
+   - Exposes story generation as MCP tools
+   - Compatible with Claude Desktop app
 
-| Use Alpine.js if... | Use React if... |
-|-------|---------|
-| ✅ You want simplicity | ✅ You want modern development |
-| ✅ No build process | ✅ TypeScript and better tooling |
-| ✅ Faster loading | ✅ Component reusability |
-| ✅ Easier to modify | ✅ Better for large teams |
-| ✅ Server-rendered HTML | ✅ Rich client-side features |
+## 🎯 Why React?
 
-Both frontends have **identical functionality** - choose based on your preferences!
+The platform now uses React as the primary frontend for these benefits:
+- ✅ Modern TypeScript development
+- ✅ Component reusability and maintainability  
+- ✅ Rich client-side features and interactivity
+- ✅ Better developer experience with hot reloading
+- ✅ Excellent tooling ecosystem (Vite, Tailwind CSS)
+- ✅ Mobile-responsive design out of the box
 
 ## 🆘 Troubleshooting
 
