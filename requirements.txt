@@ -6,6 +6,7 @@ langchain
 langchain-openai
 langgraph
 pydantic
+pydantic-settings
 python-multipart
 uvicorn
 pytest
@@ -15,3 +16,5 @@ structlog
 sqlalchemy
 alembic
 jinja2
+fastmcp
+mcp

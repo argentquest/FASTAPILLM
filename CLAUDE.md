@@ -10,7 +10,7 @@ This is a FastAPI-based AI content generation platform that supports multiple AI
 
 ```bash
 # Development
-python main.py                    # Run the application locally
+python backend/main.py            # Run the application locally
 pip install -r requirements.txt   # Install dependencies
 
 # Testing

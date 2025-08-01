@@ -34,6 +34,15 @@ except Exception as e:
 from middleware import LoggingMiddleware, ErrorHandlingMiddleware
 from database import init_db
 
+# Import MCP components
+try:
+    from fastmcp import FastMCP
+    from pydantic import Field
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    print("⚠️  FastMCP not available. MCP features disabled.")
+
 # Force colored output in development
 if settings.debug_mode:
     os.environ['FORCE_COLOR'] = '1'
@@ -48,6 +57,156 @@ configure_logging(
 )
 logger = get_logger(__name__)
 
+# MCP Server Setup
+if MCP_AVAILABLE:
+    # Import story services for MCP tools
+    from services.story_services import (
+        SemanticKernelService,
+        LangChainService,
+        LangGraphService
+    )
+    
+    # Create FastMCP instance
+    mcp = FastMCP("AI Story Generator MCP Server")
+    
+    @mcp.tool()
+    async def generate_story_semantic_kernel(
+        primary_character: str,
+        secondary_character: str
+    ) -> Dict[str, Any]:
+        """Generate a story using Semantic Kernel framework."""
+        logger.info("MCP: Generating story with Semantic Kernel",
+                        primary=primary_character,
+                        secondary=secondary_character)
+        
+        try:
+            # Create service instance
+            service = SemanticKernelService()
+            
+            # Generate story and usage info
+            result, usage_info = await service.generate_story(
+                primary_character=primary_character,
+                secondary_character=secondary_character
+            )
+            
+            # Return structured response
+            return {
+                "id": None,  # Will be assigned when saved to DB
+                "story": result,
+                "primary_character": primary_character,
+                "secondary_character": secondary_character,
+                "framework": "semantic_kernel",
+                "model": usage_info.get("model", "unknown"),
+                "total_tokens": usage_info.get("total_tokens", 0),
+                "estimated_cost_usd": usage_info.get("estimated_cost_usd", 0),
+                "generation_time_ms": usage_info.get("execution_time_ms", 0)
+            }
+            
+        except Exception as e:
+            logger.error("MCP: Error generating story with Semantic Kernel",
+                        error=str(e),
+                        error_type=type(e).__name__)
+            raise Exception(f"Story generation failed: {str(e)}")
+
+    @mcp.tool()
+    async def generate_story_langchain(
+        primary_character: str,
+        secondary_character: str
+    ) -> Dict[str, Any]:
+        """Generate a story using LangChain framework."""
+        logger.info("MCP: Generating story with LangChain",
+                    primary=primary_character,
+                    secondary=secondary_character)
+        
+        try:
+            # Create service instance
+            service = LangChainService()
+            
+            # Generate story and usage info
+            result, usage_info = await service.generate_story(
+                primary_character=primary_character,
+                secondary_character=secondary_character
+            )
+            
+            # Return structured response
+            return {
+                "id": None,
+                "story": result,
+                "primary_character": primary_character,
+                "secondary_character": secondary_character,
+                "framework": "langchain",
+                "model": usage_info.get("model", "unknown"),
+                "total_tokens": usage_info.get("total_tokens", 0),
+                "estimated_cost_usd": usage_info.get("estimated_cost_usd", 0),
+                "generation_time_ms": usage_info.get("execution_time_ms", 0)
+            }
+            
+        except Exception as e:
+            logger.error("MCP: Error generating story with LangChain",
+                        error=str(e),
+                        error_type=type(e).__name__)
+            raise Exception(f"Story generation failed: {str(e)}")
+
+    @mcp.tool()
+    async def generate_story_langgraph(
+        primary_character: str,
+        secondary_character: str
+    ) -> Dict[str, Any]:
+        """Generate a story using LangGraph framework with advanced editing."""
+        logger.info("MCP: Generating story with LangGraph",
+                    primary=primary_character,
+                    secondary=secondary_character)
+        
+        try:
+            # Create service instance
+            service = LangGraphService()
+            
+            # Generate story and usage info
+            result, usage_info = await service.generate_story(
+                primary_character=primary_character,
+                secondary_character=secondary_character
+            )
+            
+            # Return structured response
+            return {
+                "id": None,
+                "story": result,
+                "primary_character": primary_character,
+                "secondary_character": secondary_character,
+                "framework": "langgraph",
+                "model": usage_info.get("model", "unknown"),
+                "total_tokens": usage_info.get("total_tokens", 0),
+                "estimated_cost_usd": usage_info.get("estimated_cost_usd", 0),
+                "generation_time_ms": usage_info.get("execution_time_ms", 0)
+            }
+            
+        except Exception as e:
+            logger.error("MCP: Error generating story with LangGraph",
+                        error=str(e),
+                        error_type=type(e).__name__)
+            raise Exception(f"Story generation failed: {str(e)}")
+
+
+    # Optional: Add a resource to list recent stories
+    @mcp.resource("stories/recent/{limit}")
+    async def get_recent_stories(limit: int = 10) -> Dict[str, Any]:
+        """Get recent generated stories."""
+        # This would need database access
+        # For now, return a placeholder
+        return {
+            "stories": [],
+            "message": "Database integration pending",
+            "limit": limit
+        }
+
+    def get_mcp_server():
+        """Get the configured MCP server instance."""
+        return mcp
+else:
+    # Define dummy function if MCP not available
+    def get_mcp_server():
+        return None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,10 +214,13 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting AI Testing Suite - Backend API", 
                 version=settings.app_version,
-                environment="development" if settings.debug_mode else "production")
+                environment="development" if settings.debug_mode else "production",
+                mcp_enabled=MCP_AVAILABLE)
     
     # Initialize database
     init_db()
+    
+    # MCP server initialization happens during module load
     
     yield
     
@@ -136,6 +298,57 @@ app.include_router(chat_router)
 app.include_router(log_router)
 app.include_router(cost_router)
 app.include_router(context_router)
+
+# Setup MCP server on separate port
+if MCP_AVAILABLE:
+    import threading
+    import asyncio
+    
+    def run_mcp_server():
+        """Run MCP server on port 9999 like before"""
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Get the MCP server instance
+            mcp_server = get_mcp_server()
+            
+            # Run FastMCP's HTTP server
+            # This is similar to what we had in run_standalone_mcp_server
+            import uvicorn
+            
+            # Check if FastMCP has an http_app attribute (like before)
+            if hasattr(mcp_server, 'http_app'):
+                logger.info("MCP: Starting server on port 9999 using http_app")
+                uvicorn.run(
+                    mcp_server.http_app,
+                    host="0.0.0.0",
+                    port=9999,
+                    log_level="info"
+                )
+            elif hasattr(mcp_server, 'run_http_async'):
+                logger.info("MCP: Starting server on port 9999 using run_http_async")
+                loop.run_until_complete(mcp_server.run_http_async(host="0.0.0.0", port=9999))
+            else:
+                logger.error("MCP: No suitable method found for running MCP server")
+                
+        except Exception as e:
+            logger.error("MCP: Failed to start MCP server", error=str(e), error_type=type(e).__name__)
+    
+    # Start MCP server in separate thread
+    mcp_thread = threading.Thread(
+        target=run_mcp_server, 
+        daemon=True,
+        name="MCPServerThread"
+    )
+    mcp_thread.start()
+    logger.info("MCP: Server thread started on port 9999")
+    
+    # Update the test script to use port 9999
+    logger.info("MCP: To test, connect to http://localhost:9999/mcp")
+else:
+    logger.warning("MCP: FastMCP not available - install with: pip install fastmcp")
 
 @app.get("/", response_class=HTMLResponse)
 async def root():

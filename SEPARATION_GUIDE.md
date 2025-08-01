@@ -1,34 +1,46 @@
 # Frontend-Backend Separation Guide
 
-This guide explains the new separated architecture using Alpine.js + HTMX for the frontend and FastAPI for the backend.
+This guide explains the modern separated architecture using React + TypeScript for the frontend and FastAPI for the backend, with integrated MCP (Model Context Protocol) server support.
 
 ## Architecture Overview
 
 The application now offers multiple frontend options with a shared backend:
 
-1. **Backend** - FastAPI API server that handles all business logic and returns both JSON and HTML fragments
-2. **Frontend Options**:
-   - **Alpine.js + HTMX** (`/frontend/`) - Lightweight, server-driven frontend with minimal JavaScript
-   - **React** (`/frontendReact/`) - Modern SPA with TypeScript, Vite, and Tailwind CSS
+1. **Backend** (`/backend/`) - FastAPI API server with integrated MCP server
+   - RESTful API endpoints for all functionality
+   - Embedded MCP server for external tool integration
+   - Comprehensive logging and monitoring
+   - Database management with SQLAlchemy
+2. **Frontend** (`/frontendReact/`) - Modern React SPA
+   - TypeScript, Vite, and Tailwind CSS
+   - Real-time data with React Query
+   - Responsive design with comprehensive UI components
+   - Full type safety and error handling
 
 ## Key Changes
 
-### Frontend (Alpine.js + HTMX)
+### Frontend (React + TypeScript)
 
-- **Location**: `/frontend/` directory
+- **Location**: `/frontendReact/` directory
 - **Technology**: 
-  - Alpine.js for client-side state management
-  - HTMX for server interactions without writing JavaScript
-  - Bootstrap for styling
-  - Nginx for serving static files and proxying API requests
+  - React 18 with TypeScript for type safety
+  - Vite for fast development and building
+  - Tailwind CSS for responsive styling
+  - React Query for efficient data fetching
+  - React Hook Form for form management
+  - Axios for HTTP requests with interceptors
 
-### Backend (FastAPI)
+### Backend (FastAPI + MCP)
 
-- **Location**: Original location with additions in `/backend/` directory
-- **New Features**:
-  - Template support for returning HTML fragments
-  - HTMX-specific routes that return HTML instead of JSON
-  - Enhanced CORS configuration for frontend communication
+- **Location**: `/backend/` directory
+- **Key Features**:
+  - RESTful API with comprehensive endpoints
+  - Integrated MCP server for external tool access
+  - Multi-framework AI service support
+  - Real-time cost tracking and analytics
+  - File-based context management
+  - Structured logging with web viewer
+  - Database migrations with Alembic
 
 ## Running the Separated Architecture
 
@@ -36,18 +48,18 @@ The application now offers multiple frontend options with a shared backend:
 
 1. **Backend Only**:
    ```bash
-   cd backend
-   python main.py
+   python backend/main.py
    ```
 
-2. **Frontend with Live Backend**:
+2. **Full Stack Development**:
    ```bash
-   # Terminal 1 - Run backend
+   # Terminal 1 - Backend with MCP server
    python backend/main.py
    
-   # Terminal 2 - Serve frontend (requires a local web server)
-   cd frontend
-   python -m http.server 3000
+   # Terminal 2 - React development server
+   cd frontendReact
+   npm install
+   npm run dev
    ```
 
 ### Docker Mode (Recommended)
@@ -56,99 +68,118 @@ The application now offers multiple frontend options with a shared backend:
 # Run both frontend and backend
 docker-compose -f docker-compose.separated.yml up --build
 
-# With PostgreSQL
-docker-compose -f docker-compose.separated.yml --profile with-postgres up --build
-
-# With Redis
-docker-compose -f docker-compose.separated.yml --profile with-redis up --build
+# Production deployment with environment-specific configs
+docker-compose -f docker-compose.separated.yml --profile production up --build
 ```
 
 ## Access Points
 
-- **Alpine.js Frontend**: http://localhost:3000
 - **React Frontend**: http://localhost:3001  
 - **Backend API**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/api/docs
+- **API Documentation**: http://localhost:8000/docs
+- **MCP Server**: http://localhost:9999/mcp
+- **Log Viewer**: http://localhost:8000/logs
 
-## HTMX Endpoints
+## MCP Integration
 
-The backend now provides HTMX-specific endpoints that return HTML fragments:
+The backend includes an embedded MCP (Model Context Protocol) server:
 
-- `POST /htmx/story` - Generate story and return HTML
-- `GET /htmx/conversations` - Get conversation list as HTML
-- `POST /htmx/chat` - Send chat message and return HTML
-- `GET /htmx/cost/usage` - Get cost data as HTML
-- `GET /htmx/stories/search` - Search stories and return HTML
+- `GET /mcp` - MCP server tool discovery
+- `POST /mcp` - MCP tool execution
+- **Available Tools**:
+  - `generate_story_semantic_kernel` - Story generation with Semantic Kernel
+  - `generate_story_langchain` - Story generation with LangChain
+  - `generate_story_langgraph` - Story generation with LangGraph
+
+**Note**: The `compare_frameworks` tool has been removed. See [FRAMEWORK_COMPARISON.md](FRAMEWORK_COMPARISON.md) for details.
 
 ## Benefits of This Architecture
 
 1. **Clear Separation** - Frontend and backend can be developed and deployed independently
 2. **Better Scaling** - Each service can be scaled based on its specific needs
-3. **Modern Development** - Use modern frontend tools while keeping backend focused
-4. **Minimal JavaScript** - HTMX reduces the need for complex client-side code
-5. **Progressive Enhancement** - Works without JavaScript, enhanced with Alpine.js
-6. **SEO Friendly** - Server-rendered HTML content
+3. **Modern Development** - React with TypeScript for robust frontend development
+4. **Type Safety** - Full TypeScript support across the entire frontend
+5. **Performance** - Vite for fast development and optimized production builds
+6. **Real-time Features** - React Query for efficient data synchronization
+7. **MCP Integration** - Built-in support for external tool integration
 
 ## Migration Notes
 
 ### For Existing Code
 
-- All existing API endpoints remain unchanged
-- New HTMX endpoints are added alongside existing JSON APIs
-- Frontend HTML files have been updated to use Alpine.js and HTMX
-- Static files are now served by Nginx instead of FastAPI
+- All existing API endpoints remain unchanged and are fully REST-compliant
+- MCP server is embedded and starts automatically with the backend
+- React frontend communicates via standard JSON API calls
+- Database models have been expanded for comprehensive data tracking
 
 ### For New Features
 
-1. Create HTMX endpoint in backend that returns HTML fragment
-2. Add Alpine.js component for client-side state if needed
-3. Use HTMX attributes to connect frontend to backend
+1. Create REST API endpoint in backend with proper TypeScript types
+2. Add React component with TypeScript interfaces
+3. Use React Query for data fetching and caching
+4. Add MCP tool if external integration is needed
 
 ## Example: Adding a New Feature
 
-1. **Backend** - Create HTMX route:
+1. **Backend** - Create REST endpoint:
    ```python
-   @router.get("/htmx/feature")
-   async def get_feature_htmx(request: Request):
-       data = await get_feature_data()
-       return templates.TemplateResponse(
-           "fragments/feature.html",
-           {"request": request, "data": data}
-       )
+   @router.get("/api/feature")
+   async def get_feature(db: Session = Depends(get_db)):
+       data = await get_feature_data(db)
+       return {"feature": data}
    ```
 
-2. **Template** - Create HTML fragment:
-   ```html
-   <!-- backend/templates/fragments/feature.html -->
-   <div class="feature-content">
-       <h3>{{ data.title }}</h3>
-       <p>{{ data.description }}</p>
-   </div>
+2. **Types** - Define TypeScript interfaces:
+   ```typescript
+   // types/index.ts
+   interface Feature {
+     id: string;
+     title: string;
+     description: string;
+   }
    ```
 
-3. **Frontend** - Add HTMX trigger:
-   ```html
-   <div hx-get="/htmx/feature" 
-        hx-trigger="load"
-        hx-target="#feature-container">
-       Loading...
-   </div>
-   <div id="feature-container"></div>
+3. **Frontend** - Create React component:
+   ```tsx
+   // components/FeatureComponent.tsx
+   const FeatureComponent: React.FC = () => {
+     const { data, loading } = useApiQuery(
+       () => api.get('/api/feature')
+     );
+     
+     if (loading) return <div>Loading...</div>;
+     
+     return (
+       <div className="feature-content">
+         <h3>{data.feature.title}</h3>
+         <p>{data.feature.description}</p>
+       </div>
+     );
+   };
+   ```
+
+4. **MCP Tool** (if needed for external access):
+   ```python
+   @mcp.tool()
+   async def get_feature_data():
+       """Get feature information via MCP."""
+       return await get_feature_data()
    ```
 
 ## Deployment Considerations
 
-1. **Frontend** can be deployed to any static hosting (CDN, S3, Netlify)
+1. **React Frontend** can be deployed to any static hosting (CDN, S3, Netlify, Vercel)
 2. **Backend** can be deployed to any Python hosting (AWS ECS, Google Cloud Run, Heroku)
 3. Configure CORS properly for production domains
 4. Use environment variables for API endpoints
+5. **MCP Server** is embedded and deploys with the backend automatically
 
 ## Rollback Plan
 
-If you need to revert to the monolithic architecture:
+If you need to run legacy configurations:
 
-1. Use the original `docker-compose.yml`
-2. Run `python main.py` from the root directory
-3. Access the application at http://localhost:8000
+1. Use the original `docker-compose.yml` for basic deployment
+2. Run `python backend/main.py` for backend-only deployment
+3. The separated architecture is now the recommended approach
 
-The original code remains intact and functional.
+The modern React frontend provides the best user experience and development workflow.
