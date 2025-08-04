@@ -57,8 +57,8 @@ except Exception as e:
 from middleware import LoggingMiddleware, ErrorHandlingMiddleware
 from database import init_db
 
-# Import rate limiting middleware
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Import rate limiting middleware (from parent directory)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from rate_limiting import RateLimitingMiddleware
 
 
