@@ -14,34 +14,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import settings
 from logging_config import configure_logging, get_logger
-from routes.story_routes import router as story_router
-from routes.chat_routes import router as chat_router
-from routes.log_routes import router as log_router
-from routes.cost_routes import router as cost_router
-try:
-    from routes.context_routes import router as context_router
-    print("✅ Full context routes loaded successfully")
-except Exception as e:
-    print(f"❌ Error loading full context routes: {e}")
-    try:
-        from routes.context_routes_simple import router as context_router
-        print("✅ Using simplified context routes")
-    except:
-        # Create a dummy router if both fail
-        from fastapi import APIRouter
-        context_router = APIRouter(prefix="/api/context", tags=["context"])
-        print("⚠️ Using dummy context router")
-from middleware import LoggingMiddleware, ErrorHandlingMiddleware
-from database import init_db
-
-# Import MCP components
-try:
-    from fastmcp import FastMCP
-    from pydantic import Field
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    print("⚠️  FastMCP not available. MCP features disabled.")
 
 # Force colored output in development
 if settings.debug_mode:
@@ -56,6 +28,34 @@ configure_logging(
     retention_days=settings.log_retention_days
 )
 logger = get_logger(__name__)
+from routes.story_routes import router as story_router
+from routes.chat_routes import router as chat_router
+from routes.log_routes import router as log_router
+from routes.cost_routes import router as cost_router
+try:
+    from routes.context_routes import router as context_router
+    logger.info("Full context routes loaded successfully")
+except Exception as e:
+    logger.error(f"Error loading full context routes: {e}")
+    try:
+        from routes.context_routes_simple import router as context_router
+        logger.info("Using simplified context routes")
+    except:
+        # Create a dummy router if both fail
+        from fastapi import APIRouter
+        context_router = APIRouter(prefix="/api/context", tags=["context"])
+        logger.warning("Using dummy context router")
+from middleware import LoggingMiddleware, ErrorHandlingMiddleware
+from database import init_db
+
+# Import MCP components
+try:
+    from fastmcp import FastMCP
+    from pydantic import Field
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    logger.warning("FastMCP not available. MCP features disabled.")
 
 # MCP Server Setup
 if MCP_AVAILABLE:
@@ -209,7 +209,7 @@ else:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def base_lifespan(app: FastAPI):
     """Handle application startup and shutdown"""
     # Startup
     logger.info("Starting AI Testing Suite - Backend API", 
@@ -220,21 +220,56 @@ async def lifespan(app: FastAPI):
     # Initialize database
     init_db()
     
-    # MCP server initialization happens during module load
-    
     yield
     
     # Shutdown
     logger.info("Shutting down AI Testing Suite - Backend API")
 
-# Create FastAPI app
-app = FastAPI(
-    title=f"{settings.app_name} - Backend API",
-    version=settings.app_version,
-    lifespan=lifespan,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-)
+# Create combined lifespan if MCP is available
+mcp_asgi_app = None
+if MCP_AVAILABLE:
+    try:
+        # Get MCP app early to access its lifespan
+        mcp_server = get_mcp_server()
+        mcp_asgi_app = mcp_server.http_app()
+        
+        @asynccontextmanager
+        async def combined_lifespan(app: FastAPI):
+            """Combined lifespan for both FastAPI and MCP"""
+            # Run both lifespans
+            async with base_lifespan(app):
+                async with mcp_asgi_app.lifespan(app):
+                    yield
+        
+        # Create FastAPI app with combined lifespan
+        app = FastAPI(
+            title=f"{settings.app_name} - Backend API",
+            version=settings.app_version,
+            lifespan=combined_lifespan,
+            docs_url="/api/docs",
+            redoc_url="/api/redoc",
+        )
+        logger.info("MCP: Created app with combined lifespan")
+    except Exception as e:
+        logger.error(f"MCP: Failed to create MCP app: {e}")
+        MCP_AVAILABLE = False
+        # Fall back to base app
+        app = FastAPI(
+            title=f"{settings.app_name} - Backend API",
+            version=settings.app_version,
+            lifespan=base_lifespan,
+            docs_url="/api/docs",
+            redoc_url="/api/redoc",
+        )
+else:
+    # Create FastAPI app with base lifespan only
+    app = FastAPI(
+        title=f"{settings.app_name} - Backend API",
+        version=settings.app_version,
+        lifespan=base_lifespan,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+    )
 
 # Configure CORS - Allow all origins in development
 app.add_middleware(
@@ -299,56 +334,91 @@ app.include_router(log_router)
 app.include_router(cost_router)
 app.include_router(context_router)
 
-# Setup MCP server on separate port
-if MCP_AVAILABLE:
-    import threading
-    import asyncio
-    
-    def run_mcp_server():
-        """Run MCP server on port 9999 like before"""
-        # Create new event loop for this thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+# Mount MCP server on /mcp endpoint
+if MCP_AVAILABLE and mcp_asgi_app:
+    try:
+        # Try mounting at root path instead of /mcp to avoid path stripping issues
+        app.mount("/mcp", mcp_asgi_app)
+        logger.info("MCP: Server mounted at /mcp endpoint")
+        logger.info("MCP: Access at http://localhost:8000/mcp")
         
-        try:
-            # Get the MCP server instance
-            mcp_server = get_mcp_server()
-            
-            # Run FastMCP's HTTP server
-            # This is similar to what we had in run_standalone_mcp_server
-            import uvicorn
-            
-            # Check if FastMCP has an http_app attribute (like before)
-            if hasattr(mcp_server, 'http_app'):
-                logger.info("MCP: Starting server on port 9999 using http_app")
-                uvicorn.run(
-                    mcp_server.http_app,
-                    host="0.0.0.0",
-                    port=9999,
-                    log_level="info"
-                )
-            elif hasattr(mcp_server, 'run_http_async'):
-                logger.info("MCP: Starting server on port 9999 using run_http_async")
-                loop.run_until_complete(mcp_server.run_http_async(host="0.0.0.0", port=9999))
-            else:
-                logger.error("MCP: No suitable method found for running MCP server")
+        # Add a debug endpoint to test MCP routing
+        @app.get("/mcp-debug")
+        async def mcp_debug():
+            """Debug endpoint to test if MCP tools are accessible"""
+            try:
+                # Try to access the MCP server directly
+                tools_info = []
                 
-        except Exception as e:
-            logger.error("MCP: Failed to start MCP server", error=str(e), error_type=type(e).__name__)
-    
-    # Start MCP server in separate thread
-    mcp_thread = threading.Thread(
-        target=run_mcp_server, 
-        daemon=True,
-        name="MCPServerThread"
-    )
-    mcp_thread.start()
-    logger.info("MCP: Server thread started on port 9999")
-    
-    # Update the test script to use port 9999
-    logger.info("MCP: To test, connect to http://localhost:9999/mcp")
+                # Check different possible attributes for tools
+                attrs_to_check = ['_tools', 'tools', '_registry', 'registry']
+                found_attrs = []
+                
+                for attr in attrs_to_check:
+                    if hasattr(mcp_server, attr):
+                        found_attrs.append(attr)
+                        attr_value = getattr(mcp_server, attr)
+                        if isinstance(attr_value, dict):
+                            for tool_name, tool in attr_value.items():
+                                tools_info.append({
+                                    "name": tool_name,
+                                    "description": getattr(tool, '__doc__', 'No description'),
+                                    "source": attr
+                                })
+                
+                # Also check all attributes of the MCP server
+                all_attrs = [attr for attr in dir(mcp_server) if not attr.startswith('__')]
+                
+                return {
+                    "status": "success", 
+                    "tools": tools_info, 
+                    "mcp_available": True,
+                    "found_attrs": found_attrs,
+                    "all_attrs": all_attrs[:20]  # First 20 to avoid too much output
+                }
+            except Exception as e:
+                return {"status": "error", "error": str(e), "mcp_available": False}
+        
+    except Exception as e:
+        logger.error("MCP: Failed to mount MCP server", error=str(e), error_type=type(e).__name__)
+        
+        # Fall back to running on separate port if mounting fails
+        logger.warning("MCP: Falling back to separate port 9999")
+        import threading
+        import asyncio
+        
+        def run_mcp_server():
+            """Run MCP server on port 9999"""
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                import uvicorn
+                # Use the same mcp_asgi_app created above
+                logger.info("MCP: Starting server on port 9999")
+                uvicorn.run(mcp_asgi_app, host="0.0.0.0", port=9999, log_level="info")
+            except Exception as e:
+                logger.error("MCP: Failed to start MCP server", error=str(e))
+        
+        # Start in separate thread
+        mcp_thread = threading.Thread(target=run_mcp_server, daemon=True, name="MCPServerThread")
+        mcp_thread.start()
+        logger.info("MCP: Server thread started on port 9999")
+        logger.info("MCP: Access at http://localhost:9999/mcp")
+elif not MCP_AVAILABLE:
+    logger.warning("MCP: FastMCP not available - MCP endpoint will not be available")
 else:
-    logger.warning("MCP: FastMCP not available - install with: pip install fastmcp")
+    logger.warning("MCP: Failed to create MCP app - MCP endpoint will not be available")
+
+@app.get("/api/mcp-status")
+async def mcp_status():
+    """Check MCP server status"""
+    return {
+        "mcp_available": MCP_AVAILABLE,
+        "mcp_mounted": MCP_AVAILABLE and mcp_asgi_app is not None,
+        "mcp_endpoint": "http://localhost:8000/mcp" if (MCP_AVAILABLE and mcp_asgi_app) else None,
+        "message": "MCP server is available" if MCP_AVAILABLE else "FastMCP not installed"
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def root():

@@ -476,9 +476,10 @@ The platform includes a built-in MCP (Model Context Protocol) server that expose
 **Note**: The `compare_frameworks` tool has been removed. See [FRAMEWORK_COMPARISON.md](FRAMEWORK_COMPARISON.md) for details about the removed functionality and alternative implementation approaches.
 
 ### MCP Server Configuration
-- **Endpoint**: `/mcp` (embedded in main FastAPI app)
-- **Protocol**: HTTP-based MCP implementation
-- **Auto-start**: Launches automatically with main application
+- **Endpoint**: `http://localhost:8000/mcp` (primary) or `http://localhost:9999/mcp` (fallback)
+- **Protocol**: HTTP-based MCP implementation using FastMCP
+- **Integration**: Mounted as ASGI sub-application via `http_app()` method
+- **Auto-start**: Integrated with main application
 - **Logging**: Full structured logging with console output
 
 ### Claude Desktop Integration

@@ -72,3 +72,6 @@ Environment variables are used extensively. Key variables:
 - Use pytest for all tests
 - Mock external API calls
 - Test files should mirror the source structure
+
+## Workspace Considerations
+- Remember you are running in WSL while we are running in Windows

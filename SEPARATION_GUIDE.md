@@ -77,7 +77,7 @@ docker-compose -f docker-compose.separated.yml --profile production up --build
 - **React Frontend**: http://localhost:3001  
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
-- **MCP Server**: http://localhost:9999/mcp
+- **MCP Server**: http://localhost:8000/mcp
 - **Log Viewer**: http://localhost:8000/logs
 
 ## MCP Integration

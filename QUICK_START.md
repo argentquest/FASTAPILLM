@@ -18,7 +18,7 @@ You now have a modern React frontend with the backend. Here's how to run them:
 python backend/main.py
 
 # Access at: http://localhost:8000
-# MCP endpoint: http://localhost:9999/mcp
+# MCP endpoint: http://localhost:8000/mcp
 ```
 
 ### Option 2: Backend with React Frontend
@@ -35,7 +35,7 @@ npm run dev
 # - Backend API: http://localhost:8000 (helpful landing page)
 # - API Docs: http://localhost:8000/api/docs
 # - React Frontend: http://localhost:3001
-# - MCP Server: http://localhost:9999/mcp
+# - MCP Server: http://localhost:8000/mcp
 ```
 
 ### Option 3: Docker Deployment
@@ -46,7 +46,7 @@ docker-compose -f docker-compose.separated.yml up --build
 # Access:
 # - Backend API: http://localhost:8000
 # - React Frontend: http://localhost:3001
-# - MCP Server: http://localhost:9999/mcp
+# - MCP Server: http://localhost:8000/mcp
 ```
 
 **Note**: The Alpine.js frontend has been removed from the codebase. Only React frontend is available now.
@@ -74,7 +74,7 @@ docker-compose -f docker-compose.separated.yml up --build
 # Access:
 # - Backend: http://localhost:8000
 # - React Frontend: http://localhost:3001
-# - MCP Server: http://localhost:9999/mcp
+# - MCP Server: http://localhost:8000/mcp
 ```
 
 ## ❗ Important Notes
