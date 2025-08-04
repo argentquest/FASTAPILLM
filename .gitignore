@@ -178,4 +178,4 @@ alembic/versions/*.py
 .temp
 .tmp
 
-stories.db
+claude.exe
