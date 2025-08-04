@@ -1,0 +1,208 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "echo",
+      "type": "shell",
+      "command": "echo",
+      "args": ["Starting Backend and MCP Server..."],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      }
+    },
+    {
+      "label": "Run Backend",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["backend/main.py"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "DEBUG_MODE": "true",
+          "LOG_LEVEL": "DEBUG"
+        }
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": false,
+        "group": "servers"
+      }
+    },
+    {
+      "label": "Run MCP Server",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["backend/mcp_server.py"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "DEBUG_MODE": "true",
+          "LOG_LEVEL": "DEBUG"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": false,
+        "group": "servers"
+      }
+    },
+    {
+      "label": "Run MCP Server (FastMCP CLI)",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "fastmcp", "run", "backend.mcp_server:mcp"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "DEBUG_MODE": "true",
+          "LOG_LEVEL": "DEBUG"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": false,
+        "group": "servers"
+      }
+    },
+    {
+      "label": "Activate Venv & Run Backend",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        ".venv\\Scripts\\Activate.ps1; python backend/main.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "DEBUG_MODE": "true",
+          "LOG_LEVEL": "DEBUG"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "Activate Venv & Run MCP Server",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        ".venv\\Scripts\\Activate.ps1; python backend/mcp_server.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}",
+          "DEBUG_MODE": "true",
+          "LOG_LEVEL": "DEBUG"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "Run Frontend (React)",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}/frontendReact"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "Run Backend + MCP",
+      "dependsOn": ["Run Backend", "Run MCP Server"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": "servers"
+    },
+    {
+      "label": "Run All",
+      "dependsOn": ["Activate Venv & Run Backend", "Run Frontend (React)"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run All + MCP",
+      "dependsOn": ["Activate Venv & Run Backend", "Activate Venv & Run MCP Server", "Run Frontend (React)"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kill Python Processes",
+      "type": "shell",
+      "command": "taskkill",
+      "args": ["/F", "/IM", "python.exe"],
+      "windows": {
+        "command": "taskkill",
+        "args": ["/F", "/IM", "python.exe"]
+      },
+      "linux": {
+        "command": "pkill",
+        "args": ["-f", "python"]
+      },
+      "osx": {
+        "command": "pkill",
+        "args": ["-f", "python"]
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    }
+  ]
+}

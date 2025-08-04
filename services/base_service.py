@@ -9,6 +9,7 @@ from config import settings
 from logging_config import get_logger
 from pricing import calculate_cost, get_model_pricing
 from transaction_context import TransactionAware, get_current_transaction_guid
+from retry_utils import retry_api_calls, retry_network_ops
 from exceptions import (
     APIKeyError,
     APIConnectionError as CustomAPIConnectionError,
@@ -57,6 +58,7 @@ class BaseService(ABC, TransactionAware):
             self._client = self._create_client()
         return self._client
     
+    @retry_network_ops
     def _create_client(self) -> AsyncOpenAI:
         """Create OpenAI client with connection pooling.
         
@@ -100,7 +102,7 @@ class BaseService(ABC, TransactionAware):
                     api_key=settings.provider_api_key,  # Sent as Authorization: Bearer {key}
                     base_url=settings.provider_api_base_url,
                     http_client=http_client,
-                    max_retries=0,
+                    max_retries=0,  # Disable OpenAI client retries - we handle retries with tenacity
                     default_headers=headers  # ← HEADERS ARE SET HERE for all requests
                 )
             else:
@@ -124,11 +126,13 @@ class BaseService(ABC, TransactionAware):
                         error=str(e))
             raise APIKeyError(f"Failed to initialize {settings.provider_name} client")
     
+    @retry_api_calls
     async def _call_api_with_retry(self, messages: list[Dict[str, str]], **kwargs) -> tuple[str, Dict[str, Any]]:
-        """Call OpenAI API with retry logic.
+        """Call OpenAI API with comprehensive retry logic.
         
-        Implements exponential backoff retry strategy for handling
-        transient connection errors and API failures.
+        Uses tenacity-based retry strategy with exponential backoff and jitter
+        for handling transient connection errors, rate limits, and API failures.
+        All retry attempts are logged with transaction GUID tracking.
         
         Args:
             messages: List of message dictionaries with 'role' and 'content'.
@@ -147,28 +151,9 @@ class BaseService(ABC, TransactionAware):
             ...     [{"role": "user", "content": "Tell me a story"}]
             ... )
         """
-        max_attempts = 3
-        base_wait = 2  # seconds
-        
-        for attempt in range(max_attempts):
-            try:
-                return await self._call_api(messages, **kwargs)
-            except (APIConnectionError, APIError) as e:
-                if attempt == max_attempts - 1:
-                    logger.error("All retry attempts failed",
-                                service=self.service_name,
-                                attempts=max_attempts,
-                                error=str(e))
-                    raise
-                
-                wait_time = base_wait * (2 ** attempt)  # Exponential backoff
-                logger.warning("Retrying API call",
-                              service=self.service_name,
-                              attempt=attempt + 1,
-                              wait_time=wait_time,
-                              error=str(e))
-                await asyncio.sleep(wait_time)
+        return await self._call_api(messages, **kwargs)
     
+    @retry_api_calls
     async def _call_api(self, messages: list[Dict[str, str]], **kwargs) -> tuple[str, Dict[str, Any]]:
         """Call OpenAI API.
         
@@ -341,6 +326,7 @@ class BaseService(ABC, TransactionAware):
         """
         return await self.generate_content(primary_character, secondary_character)
     
+    @retry_network_ops
     async def close(self):
         """Clean up resources.
         

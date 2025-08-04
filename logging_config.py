@@ -416,3 +416,104 @@ def log_service_call(service: str, method: str, **kwargs) -> Dict[str, Any]:
         "method": method,
         **kwargs
     }
+
+def log_rate_limit_check(limit_type: str, identifier: str, limit: int, 
+                        current_count: int, remaining: int, **kwargs) -> Dict[str, Any]:
+    """Create a log context for rate limit checks.
+    
+    Helper function to create consistent log entries for rate limiting
+    operations, including successful checks and violations.
+    
+    Args:
+        limit_type: The type of rate limit (global, per_ip, endpoint).
+        identifier: The identifier being rate limited (IP, endpoint, etc.).
+        limit: The maximum requests allowed in the time window.
+        current_count: The current request count in the window.
+        remaining: The remaining requests in the window.
+        **kwargs: Additional context to include in the log entry.
+        
+    Returns:
+        A dictionary containing the log context with standardized fields.
+        
+    Examples:
+        >>> context = log_rate_limit_check("per_ip", "192.168.1.1", 60, 15, 45)
+        >>> logger.debug("Rate limit check passed", **context)
+        
+        >>> context = log_rate_limit_check("endpoint", "story_generation", 15, 16, 0,
+        ...                               client_ip="192.168.1.1", path="/api/langchain")
+        >>> logger.warning("Rate limit exceeded", **context)
+    """
+    return {
+        "event": "rate_limit_check",
+        "limit_type": limit_type,
+        "identifier": identifier,
+        "limit": limit,
+        "current_count": current_count,
+        "remaining": remaining,
+        "utilization_percent": round((current_count / limit) * 100, 1) if limit > 0 else 0,
+        **kwargs
+    }
+
+def log_rate_limit_violation(limit_type: str, identifier: str, limit: int,
+                           current_count: int, retry_after_seconds: int, 
+                           **kwargs) -> Dict[str, Any]:
+    """Create a log context for rate limit violations.
+    
+    Helper function to create consistent log entries when rate limits
+    are exceeded and requests are blocked.
+    
+    Args:
+        limit_type: The type of rate limit that was exceeded.
+        identifier: The identifier that exceeded the limit.
+        limit: The maximum requests allowed in the time window.
+        current_count: The current request count that exceeded the limit.
+        retry_after_seconds: Seconds until the rate limit resets.
+        **kwargs: Additional context to include in the log entry.
+        
+    Returns:
+        A dictionary containing the log context with standardized fields.
+        
+    Examples:
+        >>> context = log_rate_limit_violation("per_ip", "192.168.1.1", 60, 61, 45,
+        ...                                   client_ip="192.168.1.1", path="/api/stories")
+        >>> logger.warning("Rate limit exceeded - request blocked", **context)
+    """
+    return {
+        "event": "rate_limit_violation",
+        "limit_type": limit_type,
+        "identifier": identifier,
+        "limit": limit,
+        "current_count": current_count,
+        "retry_after_seconds": retry_after_seconds,
+        "exceeded_by": current_count - limit,
+        "utilization_percent": round((current_count / limit) * 100, 1) if limit > 0 else 0,
+        **kwargs
+    }
+
+def log_rate_limit_reset(limit_type: str, identifier: str, 
+                        previous_count: int, **kwargs) -> Dict[str, Any]:
+    """Create a log context for rate limit window resets.
+    
+    Helper function to create consistent log entries when rate limit
+    time windows reset and counters are cleared.
+    
+    Args:
+        limit_type: The type of rate limit that reset.
+        identifier: The identifier whose limit reset.
+        previous_count: The request count before the reset.
+        **kwargs: Additional context to include in the log entry.
+        
+    Returns:
+        A dictionary containing the log context with standardized fields.
+        
+    Examples:
+        >>> context = log_rate_limit_reset("per_ip", "192.168.1.1", 45)
+        >>> logger.debug("Rate limit window reset", **context)
+    """
+    return {
+        "event": "rate_limit_reset",
+        "limit_type": limit_type,
+        "identifier": identifier,
+        "previous_count": previous_count,
+        **kwargs
+    }

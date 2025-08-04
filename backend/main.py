@@ -57,6 +57,10 @@ except Exception as e:
 from middleware import LoggingMiddleware, ErrorHandlingMiddleware
 from database import init_db
 
+# Import rate limiting middleware
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from rate_limiting import RateLimitingMiddleware
+
 
 @asynccontextmanager
 async def base_lifespan(app: FastAPI):
@@ -146,12 +150,13 @@ logger.info("CORS middleware configured",
             allow_credentials=cors_config["allow_credentials"],
             max_age=cors_config["max_age"])
 
-# Add middleware
+# Add middleware (order matters - last added is executed first)
 app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(RateLimitingMiddleware)
 
 logger.info("Custom middleware added",
-            middlewares=["ErrorHandlingMiddleware", "LoggingMiddleware"])
+            middlewares=["ErrorHandlingMiddleware", "LoggingMiddleware", "RateLimitingMiddleware"])
 
 # Add trusted host middleware for security
 allowed_hosts = ["localhost", "127.0.0.1", "*.localhost", "backend"] if settings.debug_mode else ["*"]

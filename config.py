@@ -156,7 +156,7 @@ class Settings(BaseSettings):
     log_retention_days: int = Field(default=7, env="LOG_RETENTION_DAYS")
     
     # =============================================================================
-    # INPUT VALIDATION
+    # INPUT VALIDATION  
     # =============================================================================
     # Limits for user input validation
     # Maximum length for character names - prevents excessively long inputs
@@ -164,6 +164,64 @@ class Settings(BaseSettings):
     
     # Minimum length for character names - ensures meaningful inputs
     min_character_length: int = Field(default=1, env="MIN_CHARACTER_LENGTH")
+    
+    # =============================================================================
+    # RETRY CONFIGURATION
+    # =============================================================================
+    # Settings for automatic retry mechanisms using tenacity
+    # Enable/disable the retry mechanism globally
+    retry_enabled: bool = Field(default=True, env="RETRY_ENABLED")
+    
+    # Maximum number of retry attempts for failed operations
+    # Applies to API calls, database operations, and network requests
+    retry_max_attempts: int = Field(default=3, env="RETRY_MAX_ATTEMPTS")
+    
+    # Maximum wait time between retries in seconds
+    # Uses exponential backoff with jitter, capped at this value
+    retry_max_wait_seconds: int = Field(default=30, env="RETRY_MAX_WAIT_SECONDS")
+    
+    # Exponential backoff multiplier for retry delays
+    # Each retry waits multiplier^attempt_number seconds (with jitter)
+    retry_multiplier: float = Field(default=2.0, env="RETRY_MULTIPLIER")
+    
+    # Minimum wait time between retries in seconds
+    # Base delay before exponential backoff and jitter are applied
+    retry_min_wait_seconds: float = Field(default=1.0, env="RETRY_MIN_WAIT_SECONDS")
+    
+    # =============================================================================
+    # RATE LIMITING CONFIGURATION
+    # =============================================================================
+    # Settings for API rate limiting using SlowAPI to prevent abuse
+    # Enable/disable rate limiting globally
+    rate_limiting_enabled: bool = Field(default=True, env="RATE_LIMITING_ENABLED")
+    
+    # Per IP address limits (requests per minute)
+    # General rate limit applied to all IPs regardless of endpoint
+    rate_limit_per_ip: int = Field(default=60, env="RATE_LIMIT_PER_IP")
+    
+    # Per endpoint limits (requests per minute per IP)
+    # AI story generation endpoints - most expensive operations
+    rate_limit_story_generation: int = Field(default=15, env="RATE_LIMIT_STORY_GENERATION")
+    
+    # List and query endpoints - moderate database operations
+    rate_limit_list_endpoints: int = Field(default=30, env="RATE_LIMIT_LIST_ENDPOINTS")
+    
+    # Health and status endpoints - lightweight operations
+    rate_limit_health_status: int = Field(default=100, env="RATE_LIMIT_HEALTH_STATUS")
+    
+    # Global server limits (requests per minute across all users)
+    # Total server capacity to prevent overload
+    rate_limit_global_server: int = Field(default=1000, env="RATE_LIMIT_GLOBAL_SERVER")
+    
+    # Rate limiting behavior settings
+    # Storage backend for rate limit counters (memory, redis, database)
+    rate_limit_storage_backend: str = Field(default="memory", env="RATE_LIMIT_STORAGE_BACKEND")
+    
+    # Time window type (fixed, sliding)
+    rate_limit_time_window: str = Field(default="fixed", env="RATE_LIMIT_TIME_WINDOW")
+    
+    # HTTP status code to return when rate limited
+    rate_limit_return_status_code: int = Field(default=429, env="RATE_LIMIT_RETURN_STATUS_CODE")
     
     @field_validator("provider_api_base_url")
     @classmethod

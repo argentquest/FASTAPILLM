@@ -3,6 +3,7 @@ from typing import List, Tuple, Dict, Any
 from ..base_service import BaseService
 from prompts.langchain_prompts import get_langchain_messages
 from logging_config import get_logger
+from retry_utils import retry_api_calls
 
 logger = get_logger(__name__)
 
@@ -22,6 +23,7 @@ class LangChainService(BaseService):
         >>> print(f"Generated {len(content)} characters using {usage['total_tokens']} tokens")
     """
     
+    @retry_api_calls
     async def generate_content(self, primary_input: str, secondary_input: str) -> Tuple[str, Dict[str, Any]]:
         """Generate content using LangChain prompts.
         

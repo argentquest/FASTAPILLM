@@ -8,6 +8,7 @@ import asyncio
 import json
 import sys
 import os
+from retry_utils import get_retry_stats
 
 # Fix encoding for Windows
 if sys.platform == "win32":
@@ -21,6 +22,15 @@ async def test_fastmcp_client():
     """Test MCP server using proper FastMCP Client"""
     print("🔧 Testing MCP Server with FastMCP Client")
     print("="*50)
+    
+    # Display retry configuration
+    retry_config = get_retry_stats()
+    print("\n⚙️ Retry Configuration:")
+    print(f"  Enabled: {retry_config['retry_enabled']}")
+    print(f"  Max Attempts: {retry_config['max_attempts']}")
+    print(f"  Max Wait: {retry_config['max_wait_seconds']}s")
+    print(f"  Backoff Multiplier: {retry_config['multiplier']}")
+    print()
     
     try:
         from fastmcp import Client
@@ -47,6 +57,8 @@ async def test_fastmcp_client():
                 print(f"Available frameworks:")
                 for framework in frameworks_data.get('frameworks', []):
                     print(f"  - {framework['name']}: {framework['description']}")
+                    if retry_config['retry_enabled']:
+                        print(f"    🔄 Retry protection: ENABLED")
                     for feature in framework.get('features', []):
                         print(f"    • {feature}")
             

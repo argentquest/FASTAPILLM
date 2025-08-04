@@ -1,0 +1,134 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch and Debug Standalone Blazor WebAssembly App",
+      "type": "blazorwasm",
+      "request": "launch",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Backend (Debug Mode)",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "backend.main:app",
+        "--reload",
+        "--host", "0.0.0.0", 
+        "--port", "8000",
+        "--log-level", "debug"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "DEBUG_MODE": "true",
+        "LOG_LEVEL": "DEBUG"
+      },
+      "justMyCode": false
+    },
+    {
+      "name": "Backend Direct",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/main.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "DEBUG_MODE": "true",
+        "LOG_LEVEL": "DEBUG"
+      },
+      "justMyCode": false
+    },
+    {
+      "name": "MCP Server (Debug Mode)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/mcp_server.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "DEBUG_MODE": "true",
+        "LOG_LEVEL": "DEBUG"
+      },
+      "justMyCode": false
+    },
+    {
+      "name": "MCP Server (FastMCP CLI)",
+      "type": "python",
+      "request": "launch",
+      "module": "fastmcp",
+      "args": [
+        "run",
+        "backend.mcp_server:mcp"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "DEBUG_MODE": "true",
+        "LOG_LEVEL": "DEBUG"
+      },
+      "justMyCode": false
+    },
+    {
+      "name": "Test MCP Working",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/test_mcp_working.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "Test Enhanced Logging",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/test_enhanced_logging.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "Test MCP Client (Enhanced)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/test_mcp_client.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Backend + MCP Server",
+      "configurations": ["Backend (Debug Mode)", "MCP Server (Debug Mode)"],
+      "stopAll": true,
+      "preLaunchTask": "echo",
+      "presentation": {
+        "hidden": false,
+        "group": "servers",
+        "order": 1
+      }
+    },
+    {
+      "name": "All Servers (Backend + MCP)",
+      "configurations": ["Backend Direct", "MCP Server (FastMCP CLI)"],
+      "stopAll": true,
+      "presentation": {
+        "hidden": false,
+        "group": "servers",
+        "order": 2
+      }
+    }
+  ]
+}

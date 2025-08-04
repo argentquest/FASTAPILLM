@@ -18,3 +18,5 @@ alembic
 jinja2
 fastmcp
 mcp
+slowapi
+tenacity

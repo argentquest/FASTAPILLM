@@ -9,6 +9,7 @@ from logging_config import get_logger
 from config import settings
 from database import get_db, Story, get_model_info
 from transaction_context import get_current_transaction_guid
+from retry_utils import retry_database_ops, retry_all_errors
 
 logger = get_logger(__name__)
 
@@ -52,6 +53,7 @@ def get_service(service_name: str):
             _services[service_name] = LangGraphService()
     return _services[service_name]
 
+@retry_all_errors
 async def generate_story_handler(
     request: StoryRequest,
     service_name: str,
@@ -152,9 +154,8 @@ async def generate_story_handler(
             output_cost_per_1k_tokens=usage_info["output_cost_per_1k_tokens"]
         )
         
-        db.add(story_record)
-        db.commit()
-        db.refresh(story_record)
+        # Database operations with retry protection
+        story_record = await _save_story_to_db(db, story_record)
         
         db_save_time = (time.time() - db_start_time) * 1000
         total_time = (time.time() - start_time) * 1000
@@ -202,7 +203,24 @@ async def generate_story_handler(
                     request_id=request_id)
         raise
 
+@retry_database_ops
+async def _save_story_to_db(db: Session, story_record: Story) -> Story:
+    """Save story to database with retry protection.
+    
+    Args:
+        db: Database session
+        story_record: Story record to save
+        
+    Returns:
+        The saved and refreshed story record
+    """
+    db.add(story_record)
+    db.commit()
+    db.refresh(story_record)
+    return story_record
+
 @router.post("/semantic-kernel", response_model=StoryResponse)
+@retry_all_errors
 async def generate_story_semantic_kernel(
     request: StoryRequest,
     request_obj: Request,
@@ -262,6 +280,7 @@ async def generate_story_semantic_kernel(
     )
 
 @router.post("/langchain", response_model=StoryResponse)
+@retry_all_errors
 async def generate_story_langchain(
     request: StoryRequest,
     request_obj: Request,
@@ -307,6 +326,7 @@ async def generate_story_langchain(
     )
 
 @router.post("/langgraph", response_model=StoryResponse)
+@retry_all_errors
 async def generate_story_langgraph(
     request: StoryRequest,
     request_obj: Request,
@@ -352,6 +372,7 @@ async def generate_story_langgraph(
     )
 
 @router.get("/stories", response_model=List[StoryList])
+@retry_database_ops
 async def get_stories(
     skip: int = 0,
     limit: int = 10,
@@ -402,6 +423,7 @@ async def get_stories(
     ]
 
 @router.get("/stories/{story_id}", response_model=StoryDB)
+@retry_database_ops
 async def get_story(
     story_id: int,
     db: Session = Depends(get_db)

@@ -49,6 +49,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from logging_config import get_logger
 from transaction_context import transaction_context, get_current_transaction_guid
+from retry_utils import retry_all_errors, retry_api_calls, retry_database_ops
 from services.story_services import (
     SemanticKernelService,
     LangChainService,
@@ -68,6 +69,7 @@ logger.info("MCP Server initialized",
             python_version=sys.version)
 
 @mcp.tool
+@retry_all_errors
 async def generate_story_semantic_kernel(
     primary_character: str,
     secondary_character: str
@@ -142,6 +144,7 @@ async def generate_story_semantic_kernel(
             raise Exception(f"Story generation failed: {str(e)}")
 
 @mcp.tool
+@retry_all_errors
 async def generate_story_langchain(
     primary_character: str,
     secondary_character: str
@@ -216,6 +219,7 @@ async def generate_story_langchain(
             raise Exception(f"Story generation failed: {str(e)}")
 
 @mcp.tool
+@retry_all_errors
 async def generate_story_langgraph(
     primary_character: str,
     secondary_character: str
@@ -290,6 +294,7 @@ async def generate_story_langgraph(
             raise Exception(f"Story generation failed: {str(e)}")
 
 @mcp.tool
+@retry_all_errors
 async def list_frameworks() -> Dict[str, Any]:
     """List available AI frameworks for story generation."""
     # Generate transaction GUID and set context for the entire operation
@@ -333,6 +338,7 @@ async def list_frameworks() -> Dict[str, Any]:
 
 # MCP Resource: Recent Stories
 @mcp.resource("stories/recent/{limit}")
+@retry_database_ops
 async def get_recent_stories(limit: int = 10) -> Dict[str, Any]:
     """Get recent generated stories from the database.
     

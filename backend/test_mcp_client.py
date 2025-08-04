@@ -8,6 +8,7 @@ import sys
 import os
 from typing import Any, Dict, List
 from pprint import pprint
+# Add parent directory to path for retry_utils\nsys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\nfrom retry_utils import get_retry_stats
 
 # Fix encoding for Windows
 if sys.platform == "win32":
@@ -137,6 +138,15 @@ async def test_mcp_with_extraction():
     print("MCP SERVER OBJECT EXTRACTION")
     print("="*60)
     
+    # Display retry configuration
+    retry_config = get_retry_stats()
+    print("\n0. Retry Configuration:")
+    print(f"   Retry Enabled: {retry_config['retry_enabled']}")
+    print(f"   Max Attempts: {retry_config['max_attempts']}")
+    print(f"   Max Wait Time: {retry_config['max_wait_seconds']}s")
+    print(f"   Backoff Multiplier: {retry_config['multiplier']}")
+    print(f"   Min Wait Time: {retry_config['min_wait_seconds']}s")
+    
     # Extract MCP objects
     mcp_objects = extract_mcp_objects(mcp)
     
@@ -228,6 +238,11 @@ async def test_mcp_with_extraction():
             print(f"Request ID: {story_data.get('request_id', 'N/A')}")
             print(f"Tokens: {story_data.get('total_tokens')}")
             print(f"Cost: ${story_data.get('estimated_cost_usd', 0):.4f}")
+            print(f"Generation Time: {story_data.get('generation_time_ms', 0)}ms")
+            if retry_config['retry_enabled']:
+                print(f"Retry Protection: ENABLED (max {retry_config['max_attempts']} attempts)")
+            else:
+                print(f"Retry Protection: DISABLED")
             print(f"\nStory preview (first 200 chars):")
             print(story_data.get('story', '')[:200] + "...")
         except Exception as e:

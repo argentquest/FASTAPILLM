@@ -3,6 +3,7 @@ from typing import TypedDict, Tuple, Dict, Any
 from ..base_service import BaseService
 from prompts.langgraph_prompts import get_initial_messages, get_enhancement_messages
 from logging_config import get_logger
+from retry_utils import retry_api_calls
 
 logger = get_logger(__name__)
 
@@ -43,6 +44,7 @@ class LangGraphService(BaseService):
         >>> print(f"Enhanced content: {len(content)} chars, {usage['total_tokens']} tokens")
     """
     
+    @retry_api_calls
     async def generate_content(self, primary_input: str, secondary_input: str) -> Tuple[str, Dict[str, Any]]:
         """Generate content using LangGraph two-step process.
         
