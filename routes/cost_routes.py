@@ -25,6 +25,8 @@ class Transaction(BaseModel):
     method: str
     model: str
     created_at: datetime
+    transaction_guid: Optional[str] = None
+    request_id: Optional[str] = None
     primary_character: Optional[str] = None
     secondary_character: Optional[str] = None
     conversation_title: Optional[str] = None
@@ -682,6 +684,8 @@ async def get_all_transactions(
             method=story.method,
             model=story.model or "unknown",
             created_at=story.created_at,
+            transaction_guid=story.transaction_guid,
+            request_id=story.request_id,
             primary_character=story.primary_character,
             secondary_character=story.secondary_character,
             content_preview=story.story_content[:100] + "..." if story.story_content else None,
@@ -711,6 +715,8 @@ async def get_all_transactions(
             method=conv.method,
             model=conv.model or "unknown",
             created_at=msg.created_at,
+            transaction_guid=msg.transaction_guid,
+            request_id=msg.request_id,
             conversation_title=conv.title,
             content_preview=msg.content[:100] + "..." if msg.content else None,
             input_tokens=msg.input_tokens,
@@ -737,6 +743,8 @@ async def get_all_transactions(
             method=context.method,
             model=context.model or "unknown",
             created_at=context.created_at,
+            transaction_guid=context.transaction_guid,
+            request_id=context.request_id,
             primary_character=context.original_filename,
             content_preview=context.llm_response[:100] + "..." if context.llm_response else None,
             input_tokens=context.input_tokens,

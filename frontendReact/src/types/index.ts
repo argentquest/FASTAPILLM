@@ -5,6 +5,13 @@ export interface Story {
   story: string;
   framework: string;
   created_at: string;
+  transaction_guid?: string;
+  request_id?: string;
+  generation_time_ms?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+  estimated_cost_usd?: number;
 }
 
 export interface ChatMessage {

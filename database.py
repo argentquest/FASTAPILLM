@@ -44,6 +44,7 @@ class Story(Base):
     output_tokens = Column(Integer)
     total_tokens = Column(Integer)
     request_id = Column(String(50))
+    transaction_guid = Column(String(36), nullable=True, index=True, comment="Transaction GUID for complete request tracing")
     provider = Column(String(50))  # azure, openrouter, custom
     model = Column(String(100))
     
@@ -60,6 +61,7 @@ class ChatConversation(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     method = Column(String(50), nullable=False)  # semantic_kernel, langchain, langgraph
+    transaction_guid = Column(String(36), nullable=True, index=True, comment="Transaction GUID for complete conversation tracing")
     provider = Column(String(50))
     model = Column(String(100))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -80,6 +82,7 @@ class ChatMessage(Base):
     output_tokens = Column(Integer)
     total_tokens = Column(Integer)
     request_id = Column(String(50))
+    transaction_guid = Column(String(36), nullable=True, index=True, comment="Transaction GUID for complete message tracing")
     
     # Cost tracking fields
     estimated_cost_usd = Column(Numeric(precision=10, scale=6), nullable=True, comment="Estimated cost in USD for this message")
@@ -130,6 +133,7 @@ class ContextPromptExecution(Base):
     
     # Request tracking
     request_id = Column(String(50), nullable=True)
+    transaction_guid = Column(String(36), nullable=True, index=True, comment="Transaction GUID for complete context execution tracing")
     user_ip = Column(String(45), nullable=True)
     
     # Status tracking

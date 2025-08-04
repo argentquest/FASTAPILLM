@@ -220,6 +220,40 @@ const StoryGenerator: React.FC = () => {
                     <span>{new Date(generatedStory.created_at).toLocaleString()}</span>
                   </div>
                 </div>
+
+                {/* Story Metadata */}
+                <div className="bg-blue-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="font-medium">Story ID:</span> {generatedStory.id}
+                    </div>
+                    {generatedStory.transaction_guid && (
+                      <div>
+                        <span className="font-medium">Transaction ID:</span> {generatedStory.transaction_guid}
+                      </div>
+                    )}
+                    {generatedStory.total_tokens && (
+                      <div>
+                        <span className="font-medium">Tokens:</span> {generatedStory.total_tokens.toLocaleString()}
+                      </div>
+                    )}
+                    {generatedStory.generation_time_ms && (
+                      <div>
+                        <span className="font-medium">Generation Time:</span> {Math.round(generatedStory.generation_time_ms)}ms
+                      </div>
+                    )}
+                    {generatedStory.estimated_cost_usd && (
+                      <div>
+                        <span className="font-medium">Est. Cost:</span> ${generatedStory.estimated_cost_usd.toFixed(6)}
+                      </div>
+                    )}
+                    {generatedStory.request_id && (
+                      <div>
+                        <span className="font-medium">Request ID:</span> {generatedStory.request_id}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 
                 <div className="prose max-w-none">
                   <div className="bg-gray-50 rounded-lg p-4 whitespace-pre-wrap">

@@ -8,6 +8,8 @@ import time
 from typing import Dict, Any
 import sys
 import os
+import platform
+from datetime import datetime
 
 # Add parent directory to path to import existing modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,6 +30,13 @@ configure_logging(
     retention_days=settings.log_retention_days
 )
 logger = get_logger(__name__)
+
+# Log application initialization
+logger.info("FastAPI application initializing",
+            python_version=sys.version,
+            platform=platform.platform(),
+            pid=os.getpid(),
+            working_dir=os.getcwd())
 from routes.story_routes import router as story_router
 from routes.chat_routes import router as chat_router
 from routes.log_routes import router as log_router
@@ -48,261 +57,128 @@ except Exception as e:
 from middleware import LoggingMiddleware, ErrorHandlingMiddleware
 from database import init_db
 
-# Import MCP components
-try:
-    from fastmcp import FastMCP
-    from pydantic import Field
-    MCP_AVAILABLE = True
-except ImportError:
-    MCP_AVAILABLE = False
-    logger.warning("FastMCP not available. MCP features disabled.")
-
-# MCP Server Setup
-if MCP_AVAILABLE:
-    # Import story services for MCP tools
-    from services.story_services import (
-        SemanticKernelService,
-        LangChainService,
-        LangGraphService
-    )
-    
-    # Create FastMCP instance
-    mcp = FastMCP("AI Story Generator MCP Server")
-    
-    @mcp.tool()
-    async def generate_story_semantic_kernel(
-        primary_character: str,
-        secondary_character: str
-    ) -> Dict[str, Any]:
-        """Generate a story using Semantic Kernel framework."""
-        logger.info("MCP: Generating story with Semantic Kernel",
-                        primary=primary_character,
-                        secondary=secondary_character)
-        
-        try:
-            # Create service instance
-            service = SemanticKernelService()
-            
-            # Generate story and usage info
-            result, usage_info = await service.generate_story(
-                primary_character=primary_character,
-                secondary_character=secondary_character
-            )
-            
-            # Return structured response
-            return {
-                "id": None,  # Will be assigned when saved to DB
-                "story": result,
-                "primary_character": primary_character,
-                "secondary_character": secondary_character,
-                "framework": "semantic_kernel",
-                "model": usage_info.get("model", "unknown"),
-                "total_tokens": usage_info.get("total_tokens", 0),
-                "estimated_cost_usd": usage_info.get("estimated_cost_usd", 0),
-                "generation_time_ms": usage_info.get("execution_time_ms", 0)
-            }
-            
-        except Exception as e:
-            logger.error("MCP: Error generating story with Semantic Kernel",
-                        error=str(e),
-                        error_type=type(e).__name__)
-            raise Exception(f"Story generation failed: {str(e)}")
-
-    @mcp.tool()
-    async def generate_story_langchain(
-        primary_character: str,
-        secondary_character: str
-    ) -> Dict[str, Any]:
-        """Generate a story using LangChain framework."""
-        logger.info("MCP: Generating story with LangChain",
-                    primary=primary_character,
-                    secondary=secondary_character)
-        
-        try:
-            # Create service instance
-            service = LangChainService()
-            
-            # Generate story and usage info
-            result, usage_info = await service.generate_story(
-                primary_character=primary_character,
-                secondary_character=secondary_character
-            )
-            
-            # Return structured response
-            return {
-                "id": None,
-                "story": result,
-                "primary_character": primary_character,
-                "secondary_character": secondary_character,
-                "framework": "langchain",
-                "model": usage_info.get("model", "unknown"),
-                "total_tokens": usage_info.get("total_tokens", 0),
-                "estimated_cost_usd": usage_info.get("estimated_cost_usd", 0),
-                "generation_time_ms": usage_info.get("execution_time_ms", 0)
-            }
-            
-        except Exception as e:
-            logger.error("MCP: Error generating story with LangChain",
-                        error=str(e),
-                        error_type=type(e).__name__)
-            raise Exception(f"Story generation failed: {str(e)}")
-
-    @mcp.tool()
-    async def generate_story_langgraph(
-        primary_character: str,
-        secondary_character: str
-    ) -> Dict[str, Any]:
-        """Generate a story using LangGraph framework with advanced editing."""
-        logger.info("MCP: Generating story with LangGraph",
-                    primary=primary_character,
-                    secondary=secondary_character)
-        
-        try:
-            # Create service instance
-            service = LangGraphService()
-            
-            # Generate story and usage info
-            result, usage_info = await service.generate_story(
-                primary_character=primary_character,
-                secondary_character=secondary_character
-            )
-            
-            # Return structured response
-            return {
-                "id": None,
-                "story": result,
-                "primary_character": primary_character,
-                "secondary_character": secondary_character,
-                "framework": "langgraph",
-                "model": usage_info.get("model", "unknown"),
-                "total_tokens": usage_info.get("total_tokens", 0),
-                "estimated_cost_usd": usage_info.get("estimated_cost_usd", 0),
-                "generation_time_ms": usage_info.get("execution_time_ms", 0)
-            }
-            
-        except Exception as e:
-            logger.error("MCP: Error generating story with LangGraph",
-                        error=str(e),
-                        error_type=type(e).__name__)
-            raise Exception(f"Story generation failed: {str(e)}")
-
-
-    # Optional: Add a resource to list recent stories
-    @mcp.resource("stories/recent/{limit}")
-    async def get_recent_stories(limit: int = 10) -> Dict[str, Any]:
-        """Get recent generated stories."""
-        # This would need database access
-        # For now, return a placeholder
-        return {
-            "stories": [],
-            "message": "Database integration pending",
-            "limit": limit
-        }
-
-    def get_mcp_server():
-        """Get the configured MCP server instance."""
-        return mcp
-else:
-    # Define dummy function if MCP not available
-    def get_mcp_server():
-        return None
-
 
 @asynccontextmanager
 async def base_lifespan(app: FastAPI):
     """Handle application startup and shutdown"""
+    startup_time = time.time()
+    startup_id = f"startup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
     # Startup
-    logger.info("Starting AI Testing Suite - Backend API", 
+    logger.info("Starting AI Testing Suite - Backend API",
+                startup_id=startup_id,
                 version=settings.app_version,
                 environment="development" if settings.debug_mode else "production",
-                mcp_enabled=MCP_AVAILABLE)
+                debug_mode=settings.debug_mode,
+                log_level=settings.log_level,
+                provider=settings.provider_name,
+                model=settings.provider_model)
+    
+    # Log configuration details
+    logger.debug("Application configuration",
+                startup_id=startup_id,
+                cors_enabled=True,
+                api_docs_url="/api/docs",
+                api_redoc_url="/api/redoc",
+                api_timeout=settings.api_timeout,
+                openai_timeout=settings.openai_timeout)
     
     # Initialize database
-    init_db()
+    try:
+        logger.info("Initializing database", startup_id=startup_id)
+        init_db()
+        logger.info("Database initialized successfully", startup_id=startup_id)
+    except Exception as e:
+        logger.error("Database initialization failed",
+                    startup_id=startup_id,
+                    error=str(e),
+                    error_type=type(e).__name__)
+        raise
+    
+    startup_elapsed = (time.time() - startup_time) * 1000
+    logger.info("Application startup complete",
+                startup_id=startup_id,
+                startup_time_ms=startup_elapsed)
+    
+    # Store startup time for health checks
+    app.state.startup_time = startup_time
     
     yield
     
     # Shutdown
-    logger.info("Shutting down AI Testing Suite - Backend API")
+    shutdown_time = time.time()
+    shutdown_id = f"shutdown_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    logger.info("Shutting down AI Testing Suite - Backend API",
+                shutdown_id=shutdown_id,
+                uptime_seconds=int(time.time() - startup_time))
 
-# Create combined lifespan if MCP is available
-mcp_asgi_app = None
-if MCP_AVAILABLE:
-    try:
-        # Get MCP app early to access its lifespan
-        mcp_server = get_mcp_server()
-        mcp_asgi_app = mcp_server.http_app()
-        
-        @asynccontextmanager
-        async def combined_lifespan(app: FastAPI):
-            """Combined lifespan for both FastAPI and MCP"""
-            # Run both lifespans
-            async with base_lifespan(app):
-                async with mcp_asgi_app.lifespan(app):
-                    yield
-        
-        # Create FastAPI app with combined lifespan
-        app = FastAPI(
-            title=f"{settings.app_name} - Backend API",
-            version=settings.app_version,
-            lifespan=combined_lifespan,
-            docs_url="/api/docs",
-            redoc_url="/api/redoc",
-        )
-        logger.info("MCP: Created app with combined lifespan")
-    except Exception as e:
-        logger.error(f"MCP: Failed to create MCP app: {e}")
-        MCP_AVAILABLE = False
-        # Fall back to base app
-        app = FastAPI(
-            title=f"{settings.app_name} - Backend API",
-            version=settings.app_version,
-            lifespan=base_lifespan,
-            docs_url="/api/docs",
-            redoc_url="/api/redoc",
-        )
-else:
-    # Create FastAPI app with base lifespan only
-    app = FastAPI(
-        title=f"{settings.app_name} - Backend API",
-        version=settings.app_version,
-        lifespan=base_lifespan,
-        docs_url="/api/docs",
-        redoc_url="/api/redoc",
-    )
+# Create FastAPI app
+app = FastAPI(
+    title=f"{settings.app_name} - Backend API",
+    version=settings.app_version,
+    lifespan=base_lifespan,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+)
+
+logger.info("FastAPI app created",
+            app_name=settings.app_name,
+            app_version=settings.app_version,
+            openapi_url=app.openapi_url,
+            docs_url=app.docs_url,
+            redoc_url=app.redoc_url)
 
 # Configure CORS - Allow all origins in development
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=3600,
-)
+cors_config = {
+    "allow_origins": ["*"],  # Allow all origins
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+    "expose_headers": ["*"],
+    "max_age": 3600,
+}
+
+app.add_middleware(CORSMiddleware, **cors_config)
+
+logger.info("CORS middleware configured",
+            allow_origins=cors_config["allow_origins"],
+            allow_credentials=cors_config["allow_credentials"],
+            max_age=cors_config["max_age"])
 
 # Add middleware
 app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(LoggingMiddleware)
 
+logger.info("Custom middleware added",
+            middlewares=["ErrorHandlingMiddleware", "LoggingMiddleware"])
+
 # Add trusted host middleware for security
+allowed_hosts = ["localhost", "127.0.0.1", "*.localhost", "backend"] if settings.debug_mode else ["*"]
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.localhost", "backend"] if settings.debug_mode else ["*"]
+    allowed_hosts=allowed_hosts
 )
+
+logger.info("TrustedHost middleware configured",
+            allowed_hosts=allowed_hosts,
+            debug_mode=settings.debug_mode)
 
 # Custom exception handler for validation errors
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors with detailed logging"""
     errors = exc.errors()
+    error_id = f"val_err_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{hash(str(errors)) % 10000}"
     
     # Log validation error details
     logger.error("Validation error",
+                error_id=error_id,
                 request_id=getattr(request.state, 'request_id', None),
                 path=request.url.path,
                 method=request.method,
+                client_host=request.client.host if request.client else None,
+                error_count=len(errors),
                 errors=errors,
                 body=exc.body if hasattr(exc, 'body') else None)
     
@@ -316,113 +192,79 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "input": error.get("input", None)
         })
     
+    response_content = {
+        "error": {
+            "type": "ValidationError",
+            "message": "Request validation failed",
+            "error_id": error_id,
+            "details": formatted_errors
+        }
+    }
+    
+    logger.debug("Validation error response sent",
+                error_id=error_id,
+                status_code=422,
+                error_fields=[err["field"] for err in formatted_errors])
+    
     return JSONResponse(
         status_code=422,
-        content={
-            "error": {
-                "type": "ValidationError",
-                "message": "Request validation failed",
-                "details": formatted_errors
-            }
-        }
+        content=response_content
     )
 
 # Include routers
-app.include_router(story_router)
-app.include_router(chat_router)
-app.include_router(log_router)
-app.include_router(cost_router)
-app.include_router(context_router)
+routers = [
+    ("story", story_router),
+    ("chat", chat_router),
+    ("log", log_router),
+    ("cost", cost_router),
+    ("context", context_router)
+]
 
-# Mount MCP server on /mcp endpoint
-if MCP_AVAILABLE and mcp_asgi_app:
-    try:
-        # Try mounting at root path instead of /mcp to avoid path stripping issues
-        app.mount("/mcp", mcp_asgi_app)
-        logger.info("MCP: Server mounted at /mcp endpoint")
-        logger.info("MCP: Access at http://localhost:8000/mcp")
-        
-        # Add a debug endpoint to test MCP routing
-        @app.get("/mcp-debug")
-        async def mcp_debug():
-            """Debug endpoint to test if MCP tools are accessible"""
-            try:
-                # Try to access the MCP server directly
-                tools_info = []
-                
-                # Check different possible attributes for tools
-                attrs_to_check = ['_tools', 'tools', '_registry', 'registry']
-                found_attrs = []
-                
-                for attr in attrs_to_check:
-                    if hasattr(mcp_server, attr):
-                        found_attrs.append(attr)
-                        attr_value = getattr(mcp_server, attr)
-                        if isinstance(attr_value, dict):
-                            for tool_name, tool in attr_value.items():
-                                tools_info.append({
-                                    "name": tool_name,
-                                    "description": getattr(tool, '__doc__', 'No description'),
-                                    "source": attr
-                                })
-                
-                # Also check all attributes of the MCP server
-                all_attrs = [attr for attr in dir(mcp_server) if not attr.startswith('__')]
-                
-                return {
-                    "status": "success", 
-                    "tools": tools_info, 
-                    "mcp_available": True,
-                    "found_attrs": found_attrs,
-                    "all_attrs": all_attrs[:20]  # First 20 to avoid too much output
-                }
-            except Exception as e:
-                return {"status": "error", "error": str(e), "mcp_available": False}
-        
-    except Exception as e:
-        logger.error("MCP: Failed to mount MCP server", error=str(e), error_type=type(e).__name__)
-        
-        # Fall back to running on separate port if mounting fails
-        logger.warning("MCP: Falling back to separate port 9999")
-        import threading
-        import asyncio
-        
-        def run_mcp_server():
-            """Run MCP server on port 9999"""
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            try:
-                import uvicorn
-                # Use the same mcp_asgi_app created above
-                logger.info("MCP: Starting server on port 9999")
-                uvicorn.run(mcp_asgi_app, host="0.0.0.0", port=9999, log_level="info")
-            except Exception as e:
-                logger.error("MCP: Failed to start MCP server", error=str(e))
-        
-        # Start in separate thread
-        mcp_thread = threading.Thread(target=run_mcp_server, daemon=True, name="MCPServerThread")
-        mcp_thread.start()
-        logger.info("MCP: Server thread started on port 9999")
-        logger.info("MCP: Access at http://localhost:9999/mcp")
-elif not MCP_AVAILABLE:
-    logger.warning("MCP: FastMCP not available - MCP endpoint will not be available")
-else:
-    logger.warning("MCP: Failed to create MCP app - MCP endpoint will not be available")
+for router_name, router in routers:
+    app.include_router(router)
+    logger.debug(f"Router included: {router_name}",
+                router_name=router_name,
+                prefix=getattr(router, "prefix", "none"),
+                tags=getattr(router, "tags", []))
+
+logger.info("All routers included",
+            router_count=len(routers),
+            routers=[name for name, _ in routers])
 
 @app.get("/api/mcp-status")
-async def mcp_status():
+async def mcp_status(request: Request):
     """Check MCP server status"""
-    return {
-        "mcp_available": MCP_AVAILABLE,
-        "mcp_mounted": MCP_AVAILABLE and mcp_asgi_app is not None,
-        "mcp_endpoint": "http://localhost:8000/mcp" if (MCP_AVAILABLE and mcp_asgi_app) else None,
-        "message": "MCP server is available" if MCP_AVAILABLE else "FastMCP not installed"
+    request_id = getattr(request.state, 'request_id', None)
+    
+    logger.info("MCP status check requested",
+                request_id=request_id,
+                client_host=request.client.host if request.client else None)
+    
+    status_info = {
+        "mcp_available": False,
+        "mcp_server_info": "MCP server runs separately. Use: python backend/mcp_server.py",
+        "message": "MCP server is now a standalone service following FastMCP best practices",
+        "standalone_command": "python backend/mcp_server.py",
+        "fastmcp_cli_command": "fastmcp run backend/mcp_server.py:mcp"
     }
+    
+    logger.debug("MCP status returned",
+                request_id=request_id,
+                mcp_available=status_info["mcp_available"],
+                mode="standalone")
+    
+    return status_info
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
+async def root(request: Request):
     """Root endpoint - API only backend with helpful links"""
+    request_id = getattr(request.state, 'request_id', None)
+    
+    logger.debug("Root endpoint accessed",
+                request_id=request_id,
+                client_host=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent", "unknown"))
+    
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -495,35 +337,73 @@ async def favicon():
 @app.get("/health")
 async def health_check(request: Request) -> Dict[str, Any]:
     """Health check endpoint"""
-    return {
+    health_data = {
         "status": "healthy",
         "timestamp": time.time(),
         "version": settings.app_version,
         "request_id": getattr(request.state, 'request_id', None),
-        "environment": "development" if settings.debug_mode else "production"
+        "environment": "development" if settings.debug_mode else "production",
+        "uptime_seconds": int(time.time() - app.state.startup_time) if hasattr(app.state, 'startup_time') else 0
     }
+    
+    logger.debug("Health check requested",
+                request_id=health_data["request_id"],
+                client_host=request.client.host if request.client else None,
+                status=health_data["status"])
+    
+    return health_data
 
 @app.get("/api/provider")
 async def get_provider_info(request: Request) -> Dict[str, Any]:
     """Get current LLM provider information"""
+    request_id = getattr(request.state, 'request_id', None)
+    
     logger.info("Provider info requested",
-                request_id=getattr(request.state, 'request_id', None))
+                request_id=request_id,
+                client_host=request.client.host if request.client else None)
     
     provider_name = settings.provider_name or "Not configured"
     provider_model = settings.provider_model or "Not configured"
+    is_configured = bool(settings.provider_api_key and settings.provider_api_base_url)
     
-    return {
+    provider_info = {
         "provider": provider_name,
         "model": provider_model,
-        "configured": bool(settings.provider_api_key and settings.provider_api_base_url)
+        "configured": is_configured
     }
+    
+    logger.debug("Provider info returned",
+                request_id=request_id,
+                provider=provider_name,
+                model=provider_model,
+                configured=is_configured)
+    
+    return provider_info
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=settings.debug_mode,
-        log_config=None  # Use our custom logging
-    )
+    
+    logger.info("Starting Uvicorn server",
+                host="0.0.0.0",
+                port=8000,
+                reload=settings.debug_mode,
+                workers=1)
+    
+    try:
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=8000,
+            reload=settings.debug_mode,
+            log_config=None  # Use our custom logging
+        )
+    except KeyboardInterrupt:
+        logger.info("Server shutdown requested via keyboard interrupt")
+    except Exception as e:
+        logger.error("Server crashed",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                    exc_info=True)
+        raise
+    finally:
+        logger.info("Server shutdown complete")

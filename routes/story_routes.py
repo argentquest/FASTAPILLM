@@ -8,6 +8,7 @@ from services.story_services import SemanticKernelService, LangChainService, Lan
 from logging_config import get_logger
 from config import settings
 from database import get_db, Story, get_model_info
+from transaction_context import get_current_transaction_guid
 
 logger = get_logger(__name__)
 
@@ -142,6 +143,7 @@ async def generate_story_handler(
             output_tokens=usage_info["output_tokens"],
             total_tokens=usage_info["total_tokens"],
             request_id=request_id,
+            transaction_guid=get_current_transaction_guid(),  # Add transaction GUID
             provider=model_info["provider"],
             model=model_info["model"],
             # Cost tracking fields
@@ -182,6 +184,7 @@ async def generate_story_handler(
             output_tokens=usage_info["output_tokens"],
             total_tokens=usage_info["total_tokens"],
             request_id=request_id,
+            transaction_guid=get_current_transaction_guid(),  # Include transaction GUID in response
             estimated_cost_usd=usage_info["estimated_cost_usd"],
             input_cost_per_1k_tokens=usage_info["input_cost_per_1k_tokens"],
             output_cost_per_1k_tokens=usage_info["output_cost_per_1k_tokens"]
@@ -390,6 +393,7 @@ async def get_stories(
             output_tokens=story.output_tokens,
             total_tokens=story.total_tokens,
             created_at=story.created_at.isoformat(),
+            transaction_guid=story.transaction_guid,
             estimated_cost_usd=float(story.estimated_cost_usd) if story.estimated_cost_usd else None,
             input_cost_per_1k_tokens=float(story.input_cost_per_1k_tokens) if story.input_cost_per_1k_tokens else None,
             output_cost_per_1k_tokens=float(story.output_cost_per_1k_tokens) if story.output_cost_per_1k_tokens else None
@@ -489,6 +493,7 @@ async def search_stories_by_characters(
             output_tokens=story.output_tokens,
             total_tokens=story.total_tokens,
             created_at=story.created_at.isoformat(),
+            transaction_guid=story.transaction_guid,
             estimated_cost_usd=float(story.estimated_cost_usd) if story.estimated_cost_usd else None,
             input_cost_per_1k_tokens=float(story.input_cost_per_1k_tokens) if story.input_cost_per_1k_tokens else None,
             output_cost_per_1k_tokens=float(story.output_cost_per_1k_tokens) if story.output_cost_per_1k_tokens else None

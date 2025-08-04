@@ -51,6 +51,7 @@ class StoryResponse(BaseModel):
     output_tokens: Optional[int] = Field(None, description="Number of output tokens generated")
     total_tokens: Optional[int] = Field(None, description="Total tokens used")
     request_id: Optional[str] = Field(None, description="Unique request identifier")
+    transaction_guid: Optional[str] = Field(None, description="Transaction GUID for complete request tracing")
     estimated_cost_usd: Optional[float] = Field(None, description="Estimated cost in USD for this request")
     input_cost_per_1k_tokens: Optional[float] = Field(None, description="Cost per 1000 input tokens")
     output_cost_per_1k_tokens: Optional[float] = Field(None, description="Cost per 1000 output tokens")
@@ -70,6 +71,7 @@ class StoryDB(BaseModel):
     output_tokens: Optional[int]
     total_tokens: Optional[int]
     request_id: Optional[str]
+    transaction_guid: Optional[str]
     created_at: datetime
     estimated_cost_usd: Optional[float]
     input_cost_per_1k_tokens: Optional[float]
@@ -91,8 +93,9 @@ class StoryList(BaseModel):
     generation_time_ms: Optional[float]
     input_tokens: Optional[int]
     output_tokens: Optional[int]
-    total_tokens: Optional[int]
+    total_tokens: Optional[int]  
     created_at: str
+    transaction_guid: Optional[str]
     estimated_cost_usd: Optional[float]
     input_cost_per_1k_tokens: Optional[float]
     output_cost_per_1k_tokens: Optional[float]

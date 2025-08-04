@@ -8,6 +8,9 @@ import re
 import sys
 from datetime import datetime
 
+# Import transaction context functions
+from transaction_context import get_current_transaction_guid
+
 
 class PlainTextFormatter(logging.Formatter):
     """Custom formatter for plain text file logging without ANSI escape sequences.
@@ -129,6 +132,35 @@ class DualOutputProcessor:
         
         return event_dict
 
+
+class TransactionGuidProcessor:
+    """Processor to automatically inject transaction GUID into log entries.
+    
+    This processor adds the current transaction GUID to all log entries
+    if one exists in the context. This ensures complete traceability
+    without requiring manual GUID inclusion in every log call.
+    """
+    
+    def __call__(self, logger, method_name, event_dict):
+        """Process a log event to add transaction GUID.
+        
+        Args:
+            logger: The logger instance.
+            method_name: The logging method name (info, error, etc.).
+            event_dict: The structured log event data.
+            
+        Returns:
+            The event_dict with transaction_guid added if available.
+        """
+        # Get current transaction GUID from context
+        transaction_guid = get_current_transaction_guid()
+        
+        # Only add if GUID exists and isn't already in the event
+        if transaction_guid and 'transaction_guid' not in event_dict:
+            event_dict['transaction_guid'] = transaction_guid
+        
+        return event_dict
+
 def configure_logging(
     debug: bool = False, 
     log_file_path: Optional[str] = None,
@@ -244,6 +276,7 @@ def configure_logging(
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="iso"),
+        TransactionGuidProcessor(),  # Add transaction GUID to all log entries
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
@@ -281,23 +314,30 @@ def configure_logging(
     )
 
 def get_logger(name: str) -> structlog.BoundLogger:
-    """Get a configured logger instance.
+    """Get a configured logger instance with automatic transaction GUID injection.
     
     Creates or retrieves a structured logger instance bound to the
-    specified name. The logger will use the configuration set by
-    configure_logging().
+    specified name. The logger will automatically include the current
+    transaction GUID in all log entries if one exists in the context.
+    
+    This enhancement maintains backward compatibility - existing code
+    continues to work without changes, but now gets automatic GUID tracking.
     
     Args:
         name: The name for the logger, typically __name__ of the
             calling module.
             
     Returns:
-        A structlog BoundLogger instance configured for structured logging.
+        A structlog BoundLogger instance configured for structured logging
+        with automatic transaction GUID injection.
         
     Examples:
         >>> logger = get_logger(__name__)
         >>> logger.info("Application started", version="1.0.0")
+        # Output includes: transaction_guid=550e8400-e29b-41d4-a716-446655440000
+        
         >>> logger.error("Database error", error="Connection failed", retries=3)
+        # All log entries automatically include the current transaction GUID
     """
     return structlog.get_logger(name)
 

@@ -8,6 +8,7 @@ import json
 
 from logging_config import get_logger
 from exceptions import Error
+from transaction_context import transaction_context, get_current_transaction_guid
 
 logger = get_logger(__name__)
 
@@ -37,90 +38,97 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             call_next: The next middleware or endpoint handler.
             
         Returns:
-            The HTTP response with added X-Request-ID header.
+            The HTTP response with added X-Request-ID and X-Transaction-GUID headers.
             
         Raises:
             Any exceptions from the application are passed through.
         """
-        # Generate request ID
+        # Generate request ID and transaction GUID
         request_id = str(uuid.uuid4())
+        transaction_guid = str(uuid.uuid4())
+        
         request.state.request_id = request_id
+        request.state.transaction_guid = transaction_guid
         
-        # Get request body for POST requests
-        request_body = None
-        if request.method == "POST":
-            try:
-                body = await request.body()
-                request_body = body.decode() if body else None
-                # Need to recreate the request with the body since we consumed it
-                from starlette.datastructures import Headers
-                from starlette.requests import Request as StarletteRequest
-                
-                async def receive():
-                    return {"type": "http.request", "body": body}
-                
-                request = StarletteRequest(request.scope, receive)
-                request.state.request_id = request_id
-            except Exception as e:
-                logger.error("Failed to read request body", error=str(e))
-        
-        # Log request
-        start_time = time.time()
-        logger.info("Request started",
-                   request_id=request_id,
-                   method=request.method,
-                   path=request.url.path,
-                   client_host=request.client.host if request.client else None,
-                   request_body=request_body)
-        
-        # Process request
-        response = await call_next(request)
-        
-        # Calculate duration
-        duration_ms = (time.time() - start_time) * 1000
-        
-        # Log response with error details for 4xx/5xx status codes
-        log_data = {
-            "request_id": request_id,
-            "method": request.method,
-            "path": request.url.path,
-            "status_code": response.status_code,
-            "duration_ms": round(duration_ms, 2)
-        }
-        
-        # For error responses, try to get the response body
-        if response.status_code >= 400:
-            try:
-                # Store the body to log it
-                body_bytes = b""
-                async for chunk in response.body_iterator:
-                    body_bytes += chunk
-                
-                # Try to parse as JSON
+        # Set transaction context for the entire HTTP request lifecycle
+        with transaction_context(transaction_guid):
+            # Get request body for POST requests
+            request_body = None
+            if request.method == "POST":
                 try:
-                    error_body = json.loads(body_bytes.decode())
-                    log_data["error_response"] = error_body
-                except:
-                    log_data["error_response"] = body_bytes.decode()
-                
-                # Create a new response with the same body
-                response = Response(
-                    content=body_bytes,
-                    status_code=response.status_code,
-                    headers=dict(response.headers),
-                    media_type=response.media_type
-                )
-                
-                logger.error("Request failed", **log_data)
-            except Exception as e:
-                logger.error("Failed to log error response", error=str(e), **log_data)
-        else:
-            logger.info("Request completed", **log_data)
-        
-        # Add request ID to response headers
-        response.headers["X-Request-ID"] = request_id
-        
-        return response
+                    body = await request.body()
+                    request_body = body.decode() if body else None
+                    # Need to recreate the request with the body since we consumed it
+                    from starlette.datastructures import Headers
+                    from starlette.requests import Request as StarletteRequest
+                    
+                    async def receive():
+                        return {"type": "http.request", "body": body}
+                    
+                    request = StarletteRequest(request.scope, receive)
+                    request.state.request_id = request_id
+                    request.state.transaction_guid = transaction_guid
+                except Exception as e:
+                    logger.error("Failed to read request body", error=str(e))
+            
+            # Log request
+            start_time = time.time()
+            logger.info("Request started",
+                       request_id=request_id,
+                       method=request.method,
+                       path=request.url.path,
+                       client_host=request.client.host if request.client else None,
+                       request_body=request_body)
+            
+            # Process request
+            response = await call_next(request)
+            
+            # Calculate duration
+            duration_ms = (time.time() - start_time) * 1000
+            
+            # Log response with error details for 4xx/5xx status codes
+            log_data = {
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": round(duration_ms, 2)
+            }
+            
+            # For error responses, try to get the response body
+            if response.status_code >= 400:
+                try:
+                    # Store the body to log it
+                    body_bytes = b""
+                    async for chunk in response.body_iterator:
+                        body_bytes += chunk
+                    
+                    # Try to parse as JSON
+                    try:
+                        error_body = json.loads(body_bytes.decode())
+                        log_data["error_response"] = error_body
+                    except:
+                        log_data["error_response"] = body_bytes.decode()
+                    
+                    # Create a new response with the same body
+                    response = Response(
+                        content=body_bytes,
+                        status_code=response.status_code,
+                        headers=dict(response.headers),
+                        media_type=response.media_type
+                    )
+                    
+                    logger.error("Request failed", **log_data)
+                except Exception as e:
+                    logger.error("Failed to log error response", error=str(e), **log_data)
+            else:
+                logger.info("Request completed", **log_data)
+            
+            # Add request ID and transaction GUID to response headers
+            response.headers["X-Request-ID"] = request_id
+            response.headers["X-Transaction-GUID"] = transaction_guid
+            
+            return response
 
 class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     """Middleware for handling exceptions.

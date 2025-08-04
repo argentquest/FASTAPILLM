@@ -8,6 +8,7 @@ import httpx
 from config import settings
 from logging_config import get_logger
 from pricing import calculate_cost, get_model_pricing
+from transaction_context import TransactionAware, get_current_transaction_guid
 from exceptions import (
     APIKeyError,
     APIConnectionError as CustomAPIConnectionError,
@@ -17,7 +18,7 @@ from exceptions import (
 
 logger = get_logger(__name__)
 
-class BaseService(ABC):
+class BaseService(ABC, TransactionAware):
     """Base class for all AI generation services.
     
     This abstract base class provides common functionality for AI
@@ -117,7 +118,8 @@ class BaseService(ABC):
             
             return client
         except Exception as e:
-            logger.error(f"Failed to create {settings.provider_name} client",
+            logger.error("Failed to create provider client",
+                        provider=settings.provider_name,
                         service=self.service_name,
                         error=str(e))
             raise APIKeyError(f"Failed to initialize {settings.provider_name} client")
@@ -215,7 +217,8 @@ class BaseService(ABC):
             }
             
             # Make API call
-            logger.debug(f"Calling {settings.provider_name} API",
+            logger.debug("Calling provider API",
+                        provider=settings.provider_name,
                         service=self.service_name,
                         model=model,
                         message_count=len(messages))

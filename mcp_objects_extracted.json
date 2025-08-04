@@ -1,0 +1,209 @@
+{
+  "server_name": "AI Story Generator MCP Server",
+  "server_type": "FastMCP",
+  "attributes": {
+    "auth": {
+      "type": "NoneType",
+      "value": "None"
+    },
+    "dependencies": {
+      "type": "list",
+      "value": "[]"
+    },
+    "exclude_tags": {
+      "type": "NoneType",
+      "value": "None"
+    },
+    "include_tags": {
+      "type": "NoneType",
+      "value": "None"
+    },
+    "instructions": {
+      "type": "NoneType",
+      "value": "None"
+    },
+    "middleware": {
+      "type": "list",
+      "value": "[]"
+    },
+    "name": {
+      "type": "str",
+      "value": "AI Story Generator MCP Server"
+    },
+    "resource_prefix_format": {
+      "type": "str",
+      "value": "path"
+    },
+    "settings": {
+      "type": "Settings",
+      "value": "home=WindowsPath('C:/Users/Hack/.fastmcp') test_mode=False log_level='INFO' enable_rich_tracebacks=T"
+    }
+  },
+  "tools": {
+    "generate_story_semantic_kernel": {
+      "name": "generate_story_semantic_kernel",
+      "description": "Generate a story using Semantic Kernel framework.",
+      "parameters": "{'properties': {'primary_character': {'title': 'Primary Character', 'type': 'string'}, 'secondary_character': {'title': 'Secondary Character', 'type': 'string'}}, 'required': ['primary_character', 'se",
+      "source": "_tool_manager._tools"
+    },
+    "generate_story_langchain": {
+      "name": "generate_story_langchain",
+      "description": "Generate a story using LangChain framework.",
+      "parameters": "{'properties': {'primary_character': {'title': 'Primary Character', 'type': 'string'}, 'secondary_character': {'title': 'Secondary Character', 'type': 'string'}}, 'required': ['primary_character', 'se",
+      "source": "_tool_manager._tools"
+    },
+    "generate_story_langgraph": {
+      "name": "generate_story_langgraph",
+      "description": "Generate a story using LangGraph framework with advanced editing.",
+      "parameters": "{'properties': {'primary_character': {'title': 'Primary Character', 'type': 'string'}, 'secondary_character': {'title': 'Secondary Character', 'type': 'string'}}, 'required': ['primary_character', 'se",
+      "source": "_tool_manager._tools"
+    },
+    "list_frameworks": {
+      "name": "list_frameworks",
+      "description": "List available AI frameworks for story generation.",
+      "parameters": "{'properties': {}, 'type': 'object'}",
+      "source": "_tool_manager._tools"
+    }
+  },
+  "resources": {},
+  "methods": {
+    "add_middleware": {
+      "signature": "(middleware: 'Middleware') -> 'None'",
+      "doc": "No documentation"
+    },
+    "add_prompt": {
+      "signature": "(prompt: 'Prompt') -> 'Prompt'",
+      "doc": "Add a prompt to the server.\n\nArgs:\n    prompt: A Prompt instance to add\n\nReturns:\n    The prompt instance that was added to the server."
+    },
+    "add_resource": {
+      "signature": "(resource: 'Resource') -> 'Resource'",
+      "doc": "Add a resource to the server.\n\nArgs:\n    resource: A Resource instance to add\n\nReturns:\n    The resource instance that was added to the server."
+    },
+    "add_resource_fn": {
+      "signature": "(fn: 'AnyFunction', uri: 'str', name: 'str | None' = None, description: 'str | None' = None, mime_type: 'str | None' = None, tags: 'set[str] | None' = None) -> 'None'",
+      "doc": "Add a resource or template to the server from a function.\n\nIf the URI contains parameters (e.g. \"resource://{param}\") or the function\nhas parameters, it will be registered as a template resource.\n\nArgs:\n    fn: The function to register as a resource\n    uri: The URI for the resource\n    name: Optional name for the resource\n    description: Optional description of the resource\n    mime_type: Optional MIME type for the resource\n    tags: Optional set of tags for categorizing the resource"
+    },
+    "add_template": {
+      "signature": "(template: 'ResourceTemplate') -> 'ResourceTemplate'",
+      "doc": "Add a resource template to the server.\n\nArgs:\n    template: A ResourceTemplate instance to add\n\nReturns:\n    The template instance that was added to the server."
+    },
+    "add_tool": {
+      "signature": "(tool: 'Tool') -> 'Tool'",
+      "doc": "Add a tool to the server.\n\nThe tool function can optionally request a Context object by adding a parameter\nwith the Context type annotation. See the @tool decorator for examples.\n\nArgs:\n    tool: The Tool instance to register\n\nReturns:\n    The tool instance that was added to the server."
+    },
+    "as_proxy": {
+      "signature": "(backend: 'Client[ClientTransportT] | ClientTransport | FastMCP[Any] | AnyUrl | Path | MCPConfig | dict[str, Any] | str', **settings: 'Any') -> 'FastMCPProxy'",
+      "doc": "Create a FastMCP proxy server for the given backend.\n\nThe `backend` argument can be either an existing `fastmcp.client.Client`\ninstance or any value accepted as the `transport` argument of\n`fastmcp.client.Client`. This mirrors the convenience of the\n`fastmcp.client.Client` constructor."
+    },
+    "custom_route": {
+      "signature": "(path: 'str', methods: 'list[str]', name: 'str | None' = None, include_in_schema: 'bool' = True)",
+      "doc": "Decorator to register a custom HTTP route on the FastMCP server.\n\nAllows adding arbitrary HTTP endpoints outside the standard MCP protocol,\nwhich can be useful for OAuth callbacks, health checks, or admin APIs.\nThe handler function must be an async function that accepts a Starlette\nRequest and returns a Response.\n\nArgs:\n    path: URL path for the route (e.g., \"/oauth/callback\")\n    methods: List of HTTP methods to support (e.g., [\"GET\", \"POST\"])\n    name: Optional name for the route (to reference this route with\n        Starlette's reverse URL lookup feature)\n    include_in_schema: Whether to include in OpenAPI schema, defaults to True\n\nExample:\n    Register a custom HTTP route for a health check endpoint:\n    ```python\n    @server.custom_route(\"/health\", methods=[\"GET\"])\n    async def health_check(request: Request) -> Response:\n        return JSONResponse({\"status\": \"ok\"})\n    ```"
+    },
+    "from_client": {
+      "signature": "(client: 'Client[ClientTransportT]', **settings: 'Any') -> 'FastMCPProxy'",
+      "doc": "Create a FastMCP proxy server from a FastMCP client."
+    },
+    "from_fastapi": {
+      "signature": "(app: 'Any', name: 'str | None' = None, route_maps: 'list[RouteMap] | None' = None, route_map_fn: 'OpenAPIRouteMapFn | None' = None, mcp_component_fn: 'OpenAPIComponentFn | None' = None, mcp_names: 'dict[str, str] | None' = None, httpx_client_kwargs: 'dict[str, Any] | None' = None, tags: 'set[str] | None' = None, **settings: 'Any') -> 'FastMCPOpenAPI'",
+      "doc": "Create a FastMCP server from a FastAPI application."
+    },
+    "from_openapi": {
+      "signature": "(openapi_spec: 'dict[str, Any]', client: 'httpx.AsyncClient', route_maps: 'list[RouteMap] | None' = None, route_map_fn: 'OpenAPIRouteMapFn | None' = None, mcp_component_fn: 'OpenAPIComponentFn | None' = None, mcp_names: 'dict[str, str] | None' = None, tags: 'set[str] | None' = None, **settings: 'Any') -> 'FastMCPOpenAPI'",
+      "doc": "Create a FastMCP server from an OpenAPI specification."
+    },
+    "get_prompt": {
+      "signature": "(key: 'str') -> 'Prompt'",
+      "doc": "No documentation"
+    },
+    "get_prompts": {
+      "signature": "() -> 'dict[str, Prompt]'",
+      "doc": "List all available prompts."
+    },
+    "get_resource": {
+      "signature": "(key: 'str') -> 'Resource'",
+      "doc": "No documentation"
+    },
+    "get_resource_template": {
+      "signature": "(key: 'str') -> 'ResourceTemplate'",
+      "doc": "Get a registered resource template by key."
+    },
+    "get_resource_templates": {
+      "signature": "() -> 'dict[str, ResourceTemplate]'",
+      "doc": "Get all registered resource templates, indexed by registered key."
+    },
+    "get_resources": {
+      "signature": "() -> 'dict[str, Resource]'",
+      "doc": "Get all registered resources, indexed by registered key."
+    },
+    "get_tool": {
+      "signature": "(key: 'str') -> 'Tool'",
+      "doc": "No documentation"
+    },
+    "get_tools": {
+      "signature": "() -> 'dict[str, Tool]'",
+      "doc": "Get all registered tools, indexed by registered key."
+    },
+    "http_app": {
+      "signature": "(path: 'str | None' = None, middleware: 'list[ASGIMiddleware] | None' = None, json_response: 'bool | None' = None, stateless_http: 'bool | None' = None, transport: \"Literal['http', 'streamable-http', 'sse']\" = 'http') -> 'StarletteWithLifespan'",
+      "doc": "Create a Starlette app using the specified HTTP transport.\n\nArgs:\n    path: The path for the HTTP endpoint\n    middleware: A list of middleware to apply to the app\n    transport: Transport protocol to use - either \"streamable-http\" (default) or \"sse\"\n\nReturns:\n    A Starlette application configured with the specified transport"
+    },
+    "import_server": {
+      "signature": "(server: 'FastMCP[LifespanResultT]', prefix: 'str | None' = None, tool_separator: 'str | None' = None, resource_separator: 'str | None' = None, prompt_separator: 'str | None' = None) -> 'None'",
+      "doc": "Import the MCP objects from another FastMCP server into this one,\noptionally with a given prefix.\n\nNote that when a server is *imported*, its objects are immediately\nregistered to the importing server. This is a one-time operation and\nfuture changes to the imported server will not be reflected in the\nimporting server. Server-level configurations and lifespans are not imported.\n\nWhen a server is imported with a prefix:\n- The tools are imported with prefixed names\n  Example: If server has a tool named \"get_weather\", it will be\n  available as \"prefix_get_weather\"\n- The resources are imported with prefixed URIs using the new format\n  Example: If server has a resource with URI \"weather://forecast\", it will\n  be available as \"weather://prefix/forecast\"\n- The templates are imported with prefixed URI templates using the new format\n  Example: If server has a template with URI \"weather://location/{id}\", it will\n  be available as \"weather://prefix/location/{id}\"\n- The prompts are imported with prefixed names\n  Example: If server has a prompt named \"weather_prompt\", it will be available as\n  \"prefix_weather_prompt\"\n\nWhen a server is imported without a prefix (prefix=None), its tools, resources,\ntemplates, and prompts are imported with their original names.\n\nArgs:\n    server: The FastMCP server to import\n    prefix: Optional prefix to use for the imported server's objects. If None,\n        objects are imported with their original names.\n    tool_separator: Deprecated. Separator for tool names.\n    resource_separator: Deprecated and ignored. Prefix is now\n      applied using the protocol://prefix/path format\n    prompt_separator: Deprecated. Separator for prompt names."
+    },
+    "mount": {
+      "signature": "(server: 'FastMCP[LifespanResultT]', prefix: 'str | None' = None, as_proxy: 'bool | None' = None, *, tool_separator: 'str | None' = None, resource_separator: 'str | None' = None, prompt_separator: 'str | None' = None) -> 'None'",
+      "doc": "Mount another FastMCP server on this server with an optional prefix.\n\nUnlike importing (with import_server), mounting establishes a dynamic connection\nbetween servers. When a client interacts with a mounted server's objects through\nthe parent server, requests are forwarded to the mounted server in real-time.\nThis means changes to the mounted server are immediately reflected when accessed\nthrough the parent.\n\nWhen a server is mounted with a prefix:\n- Tools from the mounted server are accessible with prefixed names.\n  Example: If server has a tool named \"get_weather\", it will be available as \"prefix_get_weather\".\n- Resources are accessible with prefixed URIs.\n  Example: If server has a resource with URI \"weather://forecast\", it will be available as\n  \"weather://prefix/forecast\".\n- Templates are accessible with prefixed URI templates.\n  Example: If server has a template with URI \"weather://location/{id}\", it will be available\n  as \"weather://prefix/location/{id}\".\n- Prompts are accessible with prefixed names.\n  Example: If server has a prompt named \"weather_prompt\", it will be available as\n  \"prefix_weather_prompt\".\n\nWhen a server is mounted without a prefix (prefix=None), its tools, resources, templates,\nand prompts are accessible with their original names. Multiple servers can be mounted\nwithout prefixes, and they will be tried in order until a match is found.\n\nThere are two modes for mounting servers:\n1. Direct mounting (default when server has no custom lifespan): The parent server\n   directly accesses the mounted server's objects in-memory for better performance.\n   In this mode, no client lifecycle events occur on the mounted server, including\n   lifespan execution.\n\n2. Proxy mounting (default when server has a custom lifespan): The parent server\n   treats the mounted server as a separate entity and communicates with it via a\n   Client transport. This preserves all client-facing behaviors, including lifespan\n   execution, but with slightly higher overhead.\n\nArgs:\n    server: The FastMCP server to mount.\n    prefix: Optional prefix to use for the mounted server's objects. If None,\n        the server's objects are accessible with their original names.\n    as_proxy: Whether to treat the mounted server as a proxy. If None (default),\n        automatically determined based on whether the server has a custom lifespan\n        (True if it has a custom lifespan, False otherwise).\n    tool_separator: Deprecated. Separator character for tool names.\n    resource_separator: Deprecated. Separator character for resource URIs.\n    prompt_separator: Deprecated. Separator character for prompt names."
+    },
+    "prompt": {
+      "signature": "(name_or_fn: 'str | AnyFunction | None' = None, *, name: 'str | None' = None, title: 'str | None' = None, description: 'str | None' = None, tags: 'set[str] | None' = None, enabled: 'bool | None' = None) -> 'Callable[[AnyFunction], FunctionPrompt] | FunctionPrompt'",
+      "doc": "Decorator to register a prompt.\n\n        Prompts can optionally request a Context object by adding a parameter with the\n        Context type annotation. The context provides access to MCP capabilities like\n        logging, progress reporting, and session information.\n\n        This decorator supports multiple calling patterns:\n        - @server.prompt (without parentheses)\n        - @server.prompt() (with empty parentheses)\n        - @server.prompt(\"custom_name\") (with name as first argument)\n        - @server.prompt(name=\"custom_name\") (with name as keyword argument)\n        - server.prompt(function, name=\"custom_name\") (direct function call)\n\n        Args:\n            name_or_fn: Either a function (when used as @prompt), a string name, or None\n            name: Optional name for the prompt (keyword-only, alternative to name_or_fn)\n            description: Optional description of what the prompt does\n            tags: Optional set of tags for categorizing the prompt\n            enabled: Optional boolean to enable or disable the prompt\n\n        Examples:\n\n            ```python\n            @server.prompt\n            def analyze_table(table_name: str) -> list[Message]:\n                schema = read_table_schema(table_name)\n                return [\n                    {\n                        \"role\": \"user\",\n                        \"content\": f\"Analyze this schema:\n{schema}\"\n                    }\n                ]\n\n            @server.prompt()\n            def analyze_with_context(table_name: str, ctx: Context) -> list[Message]:\n                ctx.info(f\"Analyzing table {table_name}\")\n                schema = read_table_schema(table_name)\n                return [\n                    {\n                        \"role\": \"user\",\n                        \"content\": f\"Analyze this schema:\n{schema}\"\n                    }\n                ]\n\n            @server.prompt(\"custom_name\")\n            def analyze_file(path: str) -> list[Message]:\n                content = await read_file(path)\n                return [\n                    {\n                        \"role\": \"user\",\n                        \"content\": {\n                            \"type\": \"resource\",\n                            \"resource\": {\n                                \"uri\": f\"file://{path}\",\n                                \"text\": content\n                            }\n                        }\n                    }\n                ]\n\n            @server.prompt(name=\"custom_name\")\n            def another_prompt(data: str) -> list[Message]:\n                return [{\"role\": \"user\", \"content\": data}]\n\n            # Direct function call\n            server.prompt(my_function, name=\"custom_name\")\n            ```\n        "
+    },
+    "remove_tool": {
+      "signature": "(name: 'str') -> 'None'",
+      "doc": "Remove a tool from the server.\n\nArgs:\n    name: The name of the tool to remove\n\nRaises:\n    NotFoundError: If the tool is not found"
+    },
+    "resource": {
+      "signature": "(uri: 'str', *, name: 'str | None' = None, title: 'str | None' = None, description: 'str | None' = None, mime_type: 'str | None' = None, tags: 'set[str] | None' = None, enabled: 'bool | None' = None) -> 'Callable[[AnyFunction], Resource | ResourceTemplate]'",
+      "doc": "Decorator to register a function as a resource.\n\nThe function will be called when the resource is read to generate its content.\nThe function can return:\n- str for text content\n- bytes for binary content\n- other types will be converted to JSON\n\nResources can optionally request a Context object by adding a parameter with the\nContext type annotation. The context provides access to MCP capabilities like\nlogging, progress reporting, and session information.\n\nIf the URI contains parameters (e.g. \"resource://{param}\") or the function\nhas parameters, it will be registered as a template resource.\n\nArgs:\n    uri: URI for the resource (e.g. \"resource://my-resource\" or \"resource://{param}\")\n    name: Optional name for the resource\n    description: Optional description of the resource\n    mime_type: Optional MIME type for the resource\n    tags: Optional set of tags for categorizing the resource\n    enabled: Optional boolean to enable or disable the resource\n\nExamples:\n    Register a resource with a custom name:\n    ```python\n    @server.resource(\"resource://my-resource\")\n    def get_data() -> str:\n        return \"Hello, world!\"\n\n    @server.resource(\"resource://my-resource\")\n    async get_data() -> str:\n        data = await fetch_data()\n        return f\"Hello, world! {data}\"\n\n    @server.resource(\"resource://{city}/weather\")\n    def get_weather(city: str) -> str:\n        return f\"Weather for {city}\"\n\n    @server.resource(\"resource://{city}/weather\")\n    def get_weather_with_context(city: str, ctx: Context) -> str:\n        ctx.info(f\"Fetching weather for {city}\")\n        return f\"Weather for {city}\"\n\n    @server.resource(\"resource://{city}/weather\")\n    async def get_weather(city: str) -> str:\n        data = await fetch_weather(city)\n        return f\"Weather for {city}: {data}\"\n    ```"
+    },
+    "run": {
+      "signature": "(transport: 'Transport | None' = None, show_banner: 'bool' = True, **transport_kwargs: 'Any') -> 'None'",
+      "doc": "Run the FastMCP server. Note this is a synchronous function.\n\nArgs:\n    transport: Transport protocol to use (\"stdio\", \"sse\", or \"streamable-http\")"
+    },
+    "run_async": {
+      "signature": "(transport: 'Transport | None' = None, show_banner: 'bool' = True, **transport_kwargs: 'Any') -> 'None'",
+      "doc": "Run the FastMCP server asynchronously.\n\nArgs:\n    transport: Transport protocol to use (\"stdio\", \"sse\", or \"streamable-http\")"
+    },
+    "run_http_async": {
+      "signature": "(show_banner: 'bool' = True, transport: \"Literal['http', 'streamable-http', 'sse']\" = 'http', host: 'str | None' = None, port: 'int | None' = None, log_level: 'str | None' = None, path: 'str | None' = None, uvicorn_config: 'dict[str, Any] | None' = None, middleware: 'list[ASGIMiddleware] | None' = None, stateless_http: 'bool | None' = None) -> 'None'",
+      "doc": "Run the server using HTTP transport.\n\nArgs:\n    transport: Transport protocol to use - either \"streamable-http\" (default) or \"sse\"\n    host: Host address to bind to (defaults to settings.host)\n    port: Port to bind to (defaults to settings.port)\n    log_level: Log level for the server (defaults to settings.log_level)\n    path: Path for the endpoint (defaults to settings.streamable_http_path or settings.sse_path)\n    uvicorn_config: Additional configuration for the Uvicorn server\n    middleware: A list of middleware to apply to the app\n    stateless_http: Whether to use stateless HTTP (defaults to settings.stateless_http)"
+    },
+    "run_sse_async": {
+      "signature": "(host: 'str | None' = None, port: 'int | None' = None, log_level: 'str | None' = None, path: 'str | None' = None, uvicorn_config: 'dict[str, Any] | None' = None) -> 'None'",
+      "doc": "Run the server using SSE transport."
+    },
+    "run_stdio_async": {
+      "signature": "(show_banner: 'bool' = True) -> 'None'",
+      "doc": "Run the server using stdio transport."
+    },
+    "run_streamable_http_async": {
+      "signature": "(host: 'str | None' = None, port: 'int | None' = None, log_level: 'str | None' = None, path: 'str | None' = None, uvicorn_config: 'dict[str, Any] | None' = None) -> 'None'",
+      "doc": "No documentation"
+    },
+    "sse_app": {
+      "signature": "(path: 'str | None' = None, message_path: 'str | None' = None, middleware: 'list[ASGIMiddleware] | None' = None) -> 'StarletteWithLifespan'",
+      "doc": "Create a Starlette app for the SSE server.\n\nArgs:\n    path: The path to the SSE endpoint\n    message_path: The path to the message endpoint\n    middleware: A list of middleware to apply to the app"
+    },
+    "streamable_http_app": {
+      "signature": "(path: 'str | None' = None, middleware: 'list[ASGIMiddleware] | None' = None) -> 'StarletteWithLifespan'",
+      "doc": "Create a Starlette app for the StreamableHTTP server.\n\nArgs:\n    path: The path to the StreamableHTTP endpoint\n    middleware: A list of middleware to apply to the app"
+    },
+    "tool": {
+      "signature": "(name_or_fn: 'str | AnyFunction | None' = None, *, name: 'str | None' = None, title: 'str | None' = None, description: 'str | None' = None, tags: 'set[str] | None' = None, output_schema: 'dict[str, Any] | None | NotSetT' = Ellipsis, annotations: 'ToolAnnotations | dict[str, Any] | None' = None, exclude_args: 'list[str] | None' = None, enabled: 'bool | None' = None) -> 'Callable[[AnyFunction], FunctionTool] | FunctionTool'",
+      "doc": "Decorator to register a tool.\n\nTools can optionally request a Context object by adding a parameter with the\nContext type annotation. The context provides access to MCP capabilities like\nlogging, progress reporting, and resource access.\n\nThis decorator supports multiple calling patterns:\n- @server.tool (without parentheses)\n- @server.tool (with empty parentheses)\n- @server.tool(\"custom_name\") (with name as first argument)\n- @server.tool(name=\"custom_name\") (with name as keyword argument)\n- server.tool(function, name=\"custom_name\") (direct function call)\n\nArgs:\n    name_or_fn: Either a function (when used as @tool), a string name, or None\n    name: Optional name for the tool (keyword-only, alternative to name_or_fn)\n    description: Optional description of what the tool does\n    tags: Optional set of tags for categorizing the tool\n    output_schema: Optional JSON schema for the tool's output\n    annotations: Optional annotations about the tool's behavior\n    exclude_args: Optional list of argument names to exclude from the tool schema\n    enabled: Optional boolean to enable or disable the tool\n\nExamples:\n    Register a tool with a custom name:\n    ```python\n    @server.tool\n    def my_tool(x: int) -> str:\n        return str(x)\n\n    # Register a tool with a custom name\n    @server.tool\n    def my_tool(x: int) -> str:\n        return str(x)\n\n    @server.tool(\"custom_name\")\n    def my_tool(x: int) -> str:\n        return str(x)\n\n    @server.tool(name=\"custom_name\")\n    def my_tool(x: int) -> str:\n        return str(x)\n\n    # Direct function call\n    server.tool(my_function, name=\"custom_name\")\n    ```"
+    }
+  },
+  "properties": {},
+  "internal_attributes": {}
+}

@@ -46,7 +46,19 @@ const StoryHistory: React.FC = () => {
   };
 
   const downloadStory = (story: Story) => {
-    const content = `${story.primary_character} and ${story.secondary_character}\n\nGenerated with: ${story.framework}\nCreated: ${new Date(story.created_at).toLocaleString()}\n\n${story.story}`;
+    const metadata = [
+      `${story.primary_character} and ${story.secondary_character}`,
+      `Generated with: ${story.framework}`,
+      `Created: ${new Date(story.created_at).toLocaleString()}`,
+      `Story ID: ${story.id}`,
+      story.transaction_guid ? `Transaction ID: ${story.transaction_guid}` : null,
+      story.request_id ? `Request ID: ${story.request_id}` : null,
+      story.total_tokens ? `Tokens: ${story.total_tokens.toLocaleString()}` : null,
+      story.generation_time_ms ? `Generation Time: ${Math.round(story.generation_time_ms)}ms` : null,
+      story.estimated_cost_usd ? `Est. Cost: $${story.estimated_cost_usd.toFixed(6)}` : null
+    ].filter(Boolean).join('\n');
+    
+    const content = `${metadata}\n\n${story.story}`;
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -172,15 +184,29 @@ const StoryHistory: React.FC = () => {
                     </p>
                   </div>
                   
-                  <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                    <div className="flex items-center">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {new Date(story.created_at).toLocaleDateString()}
+                  <div className="space-y-1 text-xs text-gray-500 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {new Date(story.created_at).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center">
+                        <User className="w-3 h-3 mr-1" />
+                        ID: {story.id.substring(0, 8)}
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <User className="w-3 h-3 mr-1" />
-                      ID: {story.id.substring(0, 8)}
-                    </div>
+                    {story.transaction_guid && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Transaction:</span>
+                        <span className="font-mono">{story.transaction_guid.substring(0, 8)}</span>
+                      </div>
+                    )}
+                    {story.total_tokens && (
+                      <div className="flex items-center justify-between">
+                        <span>Tokens:</span>
+                        <span>{story.total_tokens.toLocaleString()}</span>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex space-x-2">
@@ -242,6 +268,52 @@ const StoryHistory: React.FC = () => {
             </div>
             
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              {/* Story Metadata */}
+              <div className="bg-blue-50 rounded-lg p-4 mb-6 text-sm text-gray-600">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <span className="font-medium">Story ID:</span>
+                    <br />
+                    <span className="font-mono text-xs">{selectedStory.id}</span>
+                  </div>
+                  {selectedStory.transaction_guid && (
+                    <div>
+                      <span className="font-medium">Transaction ID:</span>
+                      <br />
+                      <span className="font-mono text-xs">{selectedStory.transaction_guid}</span>
+                    </div>
+                  )}
+                  {selectedStory.request_id && (
+                    <div>
+                      <span className="font-medium">Request ID:</span>
+                      <br />
+                      <span className="font-mono text-xs">{selectedStory.request_id}</span>
+                    </div>
+                  )}
+                  {selectedStory.total_tokens && (
+                    <div>
+                      <span className="font-medium">Tokens:</span>
+                      <br />
+                      <span>{selectedStory.total_tokens.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {selectedStory.generation_time_ms && (
+                    <div>
+                      <span className="font-medium">Generation Time:</span>
+                      <br />
+                      <span>{Math.round(selectedStory.generation_time_ms)}ms</span>
+                    </div>
+                  )}
+                  {selectedStory.estimated_cost_usd && (
+                    <div>
+                      <span className="font-medium">Est. Cost:</span>
+                      <br />
+                      <span>${selectedStory.estimated_cost_usd.toFixed(6)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
               <div className="prose max-w-none">
                 <div className="bg-gray-50 rounded-lg p-6 whitespace-pre-wrap">
                   {selectedStory.story}

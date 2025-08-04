@@ -16,7 +16,12 @@
       "Bash(rg:*)",
       "Bash(curl:*)",
       "Bash(npm run build:*)",
-      "WebFetch(domain:gofastmcp.com)"
+      "WebFetch(domain:gofastmcp.com)",
+      "Bash(jq:*)",
+      "Bash(timeout:*)",
+      "Bash(alembic revision:*)",
+      "Bash(sqlite3:*)",
+      "Bash(alembic upgrade:*)"
     ],
     "deny": []
   }
