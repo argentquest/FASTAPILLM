@@ -1,6 +1,6 @@
-# Contributing to AI Content Generation Platform
+# Contributing to FASTAPILLM
 
-We love your input! We want to make contributing to the AI Content Generation Platform as easy and transparent as possible, whether it's:
+We love your input! We want to make contributing to FASTAPILLM as easy and transparent as possible, whether it's:
 
 - Reporting a bug
 - Discussing the current state of the code
@@ -36,8 +36,8 @@ Pull requests are the best way to propose changes to the codebase. We actively w
 
 1. **Clone your fork**:
    ```bash
-   git clone https://github.com/yourusername/ai-content-platform.git
-   cd ai-content-platform
+   git clone https://github.com/yourusername/FASTAPILLM.git
+   cd FASTAPILLM
    ```
 
 2. **Create a virtual environment**:

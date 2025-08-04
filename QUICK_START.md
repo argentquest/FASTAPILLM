@@ -1,4 +1,4 @@
-# Quick Start Guide
+# FASTAPILLM Quick Start Guide
 
 ## 🔍 Check Your Setup First
 
@@ -8,7 +8,7 @@ python check-setup.py
 ```
 This will tell you exactly what you need to install.
 
-## 🚀 Running Your AI Story Generator
+## 🚀 Running FASTAPILLM
 
 You now have a modern React frontend with the backend. Here's how to run them:
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a FastAPI-based AI content generation platform that supports multiple AI frameworks (Semantic Kernel, LangChain, LangGraph) and providers (Azure OpenAI, OpenRouter, custom OpenAI-compatible APIs).
+FASTAPILLM is a FastAPI-based AI content generation platform that supports multiple AI frameworks (Semantic Kernel, LangChain, LangGraph) and providers (Azure OpenAI, OpenRouter, custom OpenAI-compatible APIs).
 
 **Recent Major Updates:**
 - ✅ **Standalone MCP Server**: Refactored to follow FastMCP best practices

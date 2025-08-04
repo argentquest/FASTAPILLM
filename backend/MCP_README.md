@@ -1,4 +1,4 @@
-# AI Story Generator MCP Server
+# FASTAPILLM MCP Server
 
 This is a standalone MCP (Model Context Protocol) server that provides AI story generation tools following FastMCP best practices from https://gofastmcp.com.
 
