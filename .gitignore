@@ -179,3 +179,9 @@ alembic/versions/*.py
 .tmp
 
 claude.exe
+
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.mkv
