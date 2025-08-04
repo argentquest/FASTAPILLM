@@ -59,7 +59,8 @@ from database import init_db
 
 # Import rate limiting middleware (from parent directory)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from rate_limiting import RateLimitingMiddleware
+# Temporarily use simple middleware for testing
+from simple_rate_limiting import SimpleRateLimitingMiddleware as RateLimitingMiddleware
 
 
 @asynccontextmanager
