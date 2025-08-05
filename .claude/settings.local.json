@@ -21,7 +21,9 @@
       "Bash(timeout:*)",
       "Bash(alembic revision:*)",
       "Bash(sqlite3:*)",
-      "Bash(alembic upgrade:*)"
+      "Bash(alembic upgrade:*)",
+      "Bash(npm outdated)",
+      "Bash(npx vite-bundle-analyzer:*)"
     ],
     "deny": []
   }
