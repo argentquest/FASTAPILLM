@@ -22,7 +22,7 @@ class Logger {
 
   constructor() {
     this.sessionId = this.generateSessionId();
-    this.isDevelopment = import.meta.env.DEV;
+    this.isDevelopment = process.env.NODE_ENV === 'development';
     
     // Log session start
     this.info('Frontend session started', { sessionId: this.sessionId });

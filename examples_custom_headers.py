@@ -79,28 +79,81 @@ def signature_headers() -> Dict[str, str]:
 # EXAMPLE 4: Context-Aware Headers
 # =============================================================================
 
-def context_aware_headers() -> Dict[str, str]:
-    """Generate headers based on current application context."""
+def context_aware_headers(settings=None, custom_settings=None) -> Dict[str, str]:
+    """Generate headers based on current application context.
+    
+    This function demonstrates how to use the settings parameters
+    that are automatically passed by HeaderFactory.
+    
+    Args:
+        settings: Main Settings object (passed by HeaderFactory)
+        custom_settings: CustomProviderSettings object (passed by HeaderFactory)
+    """
     headers = {
         "X-Request-Time": datetime.utcnow().isoformat() + "Z",
         "X-Service-Name": "fastapi-llm",
     }
     
-    # Add environment-specific headers
-    import os
-    if os.getenv("DEBUG_MODE", "false").lower() == "true":
-        headers["X-Debug-Mode"] = "enabled"
-        headers["X-Debug-Level"] = "verbose"
+    # Add settings-based headers if available
+    if settings:
+        headers["X-App-Name"] = settings.app_name
+        headers["X-App-Version"] = settings.app_version
+        if settings.debug_mode:
+            headers["X-Debug-Mode"] = "enabled"
+            headers["X-Debug-Level"] = "verbose"
     
     # Add custom provider context if available
-    if custom_settings:
-        if custom_settings.custom_var:
-            headers["X-Custom-Data"] = custom_settings.custom_var
+    if custom_settings and custom_settings.custom_var:
+        headers["X-Custom-Data"] = custom_settings.custom_var
     
     return headers
 
 # =============================================================================
-# EXAMPLE 5: API Rate Limiting Headers
+# EXAMPLE 5: Full Settings Access Example
+# =============================================================================
+
+def settings_based_headers(settings=None, custom_settings=None) -> Dict[str, str]:
+    """Generate headers using full access to settings.
+    
+    This example shows how to leverage all available settings
+    to create comprehensive headers.
+    """
+    headers = {}
+    
+    if settings:
+        # Application info
+        headers["X-App"] = f"{settings.app_name}/{settings.app_version}"
+        
+        # Timeout configuration
+        headers["X-Timeout"] = str(settings.api_timeout)
+        
+        # Rate limiting info
+        if settings.rate_limiting_enabled:
+            headers["X-RateLimit-Enabled"] = "true"
+            headers["X-RateLimit-PerIP"] = str(settings.rate_limit_per_ip)
+        
+        # Retry configuration
+        if settings.retry_enabled:
+            headers["X-Retry-Enabled"] = "true"
+            headers["X-Retry-MaxAttempts"] = str(settings.retry_max_attempts)
+        
+        # Debug information
+        if settings.debug_mode:
+            headers["X-Debug"] = "true"
+            headers["X-Log-Level"] = settings.log_level
+    
+    if custom_settings:
+        # Custom variable
+        if custom_settings.custom_var:
+            headers["X-Custom"] = custom_settings.custom_var
+        
+        # Any other custom settings can be accessed here
+        headers["X-Provider"] = custom_settings.provider_name
+    
+    return headers
+
+# =============================================================================
+# EXAMPLE 6: API Rate Limiting Headers
 # =============================================================================
 
 class RateLimitTracker:
@@ -238,4 +291,6 @@ if __name__ == "__main__":
     print("\nFor custom providers:")
     print("- Set PROVIDER_NAME=custom in .env")
     print("- Register with HeaderFactory.register_header_function('custom', your_function)")
-    print("- Access CUSTOM_VAR in your function via custom_settings.custom_var")
+    print("- Your function can accept (settings, custom_settings) parameters")
+    print("- Access all settings: settings.app_name, settings.debug_mode, etc.")
+    print("- Access CUSTOM_VAR: custom_settings.custom_var")

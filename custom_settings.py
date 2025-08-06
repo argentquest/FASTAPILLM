@@ -1,27 +1,40 @@
 """
 Custom Settings Module
 
-This module provides a single custom variable for custom providers.
-When PROVIDER_NAME=custom, only CUSTOM_VAR is loaded from environment.
+ARCHITECTURE OVERVIEW:
+This module provides extended configuration for custom providers while maintaining
+full access to all default application settings.
+
+DESIGN PRINCIPLES:
+1. Conditional Loading: Only loads when PROVIDER_NAME=custom
+2. Complete Inheritance: Contains ALL fields from main Settings class
+3. Single Extension: Adds only CUSTOM_VAR field
+4. No Circular Dependencies: Avoids importing from config.py
+
+SETTINGS HIERARCHY:
+- Main Settings (config.py): All default application configuration
+- CustomProviderSettings: All default settings + CUSTOM_VAR extension
+- HeaderFactory: Consumes both settings objects for dynamic header generation
 
 HeaderFactory Integration:
 - Static headers: Use PROVIDER_HEADERS environment variable (inherited from main settings)
 - Programmatic headers: Use HeaderFactory.register_header_function() to register custom header logic
 - The HeaderFactory will automatically use registered functions when provider_name="custom"
-- Custom header functions can access custom_var through the global custom_settings instance
+- Custom header functions receive (settings, custom_settings) parameters automatically
 
-Example:
+Example Usage:
     # In your initialization code
     from header_factory import HeaderFactory
-    from custom_settings import load_custom_settings
+    from config import settings, custom_settings
     
-    custom_settings = load_custom_settings()
-    
-    def generate_custom_headers():
-        return {
-            "X-Custom-Var": custom_settings.custom_var,
-            "X-Timestamp": str(int(time.time()))
+    def generate_custom_headers(settings, custom_settings):
+        headers = {
+            "X-App-Name": settings.app_name,        # Access all default settings
+            "X-Debug": str(settings.debug_mode),     # Timeouts, logging, etc.
         }
+        if custom_settings and custom_settings.custom_var:
+            headers["X-Custom-Var"] = custom_settings.custom_var
+        return headers
     
     HeaderFactory.register_header_function("custom", generate_custom_headers)
 """

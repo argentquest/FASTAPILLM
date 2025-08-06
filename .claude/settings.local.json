@@ -25,7 +25,9 @@
       "Bash(npm outdated)",
       "Bash(npx vite-bundle-analyzer:*)",
       "Bash(pytest:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(npm install)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

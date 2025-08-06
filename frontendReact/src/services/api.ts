@@ -14,7 +14,7 @@ import type {
 } from '../types';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: process.env.API_URL || 'http://localhost:8000',
   timeout: 60000, // 60 seconds for long-running requests
   headers: {
     'Content-Type': 'application/json',

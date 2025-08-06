@@ -1,6 +1,6 @@
 # AI Story Generator - React Frontend
 
-A modern React frontend for the AI Story Generator application, built with TypeScript, Vite, and Tailwind CSS.
+A modern React frontend for the AI Story Generator application, built with TypeScript, Webpack, and Tailwind CSS.
 
 ## Features
 
@@ -15,7 +15,7 @@ A modern React frontend for the AI Story Generator application, built with TypeS
 ## Tech Stack
 
 - **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite (fast development and building)
+- **Build Tool**: Webpack (powerful bundling and optimization)
 - **Styling**: Tailwind CSS
 - **State Management**: React Query for server state
 - **Form Handling**: React Hook Form
@@ -48,7 +48,7 @@ frontendReact/
 │   └── index.css       # Global styles
 ├── public/             # Static assets
 ├── package.json        # Dependencies and scripts
-├── vite.config.ts      # Vite configuration
+├── webpack.config.js   # Webpack configuration
 ├── tailwind.config.js  # Tailwind configuration
 └── Dockerfile          # Docker configuration
 ```
@@ -80,17 +80,14 @@ npm --version   # Should show npm version
    cp .env.example .env
    ```
    
-   Edit `.env` and configure:
-   ```
-   VITE_API_URL=http://localhost:8000
-   ```
+   The API URL is configured to http://localhost:8000 by default in webpack.config.js
 
 3. **Start development server**:
    ```bash
    npm run dev
    ```
    
-   The app will be available at http://localhost:3001
+   The app will be available at http://localhost:5173
 
 4. **Build for production**:
    ```bash
@@ -141,7 +138,7 @@ Add these configurations to your VSCode:
 docker-compose -f docker-compose.separated.yml up frontend-react --build
 
 # Access the app
-# React Frontend: http://localhost:3001
+# React Frontend: http://localhost:5173
 # Backend API: http://localhost:8000
 ```
 
@@ -152,7 +149,7 @@ docker-compose -f docker-compose.separated.yml up frontend-react --build
 docker build -t ai-story-react ./frontendReact
 
 # Run container
-docker run -p 3001:80 ai-story-react
+docker run -p 5173:80 ai-story-react
 ```
 
 ## Features Overview
@@ -222,14 +219,14 @@ The frontend communicates with the backend through a well-defined API layer:
 2. **React Query**: Intelligent caching and background updates
 3. **Optimistic Updates**: Immediate UI updates for better UX
 4. **Image Optimization**: Proper image loading and caching
-5. **Bundle Analysis**: Vite's built-in bundle optimization
+5. **Bundle Analysis**: Webpack's bundle optimization and splitting
 
 ## Comparison with Alpine.js Frontend
 
 | Feature | React Frontend | Alpine.js Frontend |
 |---------|---------------|-------------------|
 | **Learning Curve** | Moderate (React knowledge required) | Minimal (HTML + minimal JS) |
-| **Build Process** | Yes (Vite bundling) | No (direct HTML serving) |
+| **Build Process** | Yes (Webpack bundling) | No (direct HTML serving) |
 | **TypeScript** | Full support | None |
 | **State Management** | React Query + useState | Alpine.js reactivity |
 | **Component Reusability** | High (JSX components) | Low (HTML templates) |
@@ -244,7 +241,7 @@ The frontend communicates with the backend through a well-defined API layer:
 ### Development
 ```bash
 # Start all services
-npm run dev  # React frontend on :3001
+npm run dev  # React frontend on :5173
 python backend/main.py  # Backend on :8000
 ```
 
@@ -254,15 +251,17 @@ python backend/main.py  # Backend on :8000
 docker-compose -f docker-compose.separated.yml up --build
 
 # Access points:
-# - React Frontend: http://localhost:3001
+# - React Frontend: http://localhost:5173
 # - Alpine.js Frontend: http://localhost:3000
 # - Backend API: http://localhost:8000
 ```
 
 ### Environment Variables
-- `VITE_API_URL`: Backend API URL (default: http://localhost:8000)
-- `VITE_APP_NAME`: Application name
-- `VITE_APP_VERSION`: Application version
+- `API_URL`: Backend API URL (default: http://localhost:8000)
+- `APP_NAME`: Application name
+- `APP_VERSION`: Application version
+
+Note: Environment variables are now defined in webpack.config.js using DefinePlugin
 
 ## Contributing
 
@@ -281,7 +280,7 @@ docker-compose -f docker-compose.separated.yml up --build
 1. **API Connection Errors**:
    - Ensure backend is running on port 8000
    - Check CORS configuration in backend
-   - Verify VITE_API_URL environment variable
+   - Verify API URL in webpack.config.js proxy configuration
 
 2. **Build Failures**:
    - Clear node_modules and reinstall: `rm -rf node_modules package-lock.json && npm install`
@@ -296,7 +295,7 @@ docker-compose -f docker-compose.separated.yml up --build
 
 - Use React DevTools for debugging
 - Enable React Query DevTools in development
-- Use Vite's HMR for fast development
+- Use Webpack's HMR for fast development
 - Check browser console for TypeScript errors
 - Use ESLint for code quality
 
@@ -306,7 +305,7 @@ docker-compose -f docker-compose.separated.yml up --build
 - [ ] Implement React Suspense for better loading
 - [ ] Add React Hook Form with Zod validation
 - [ ] Create Storybook for component documentation
-- [ ] Add comprehensive testing with Vitest
+- [ ] Add comprehensive testing with Jest
 - [ ] Implement PWA features
 - [ ] Add internationalization (i18n)
 - [ ] Create component library for reusability

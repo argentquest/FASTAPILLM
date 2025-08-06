@@ -430,6 +430,9 @@ def load_settings() -> Settings:
 # It automatically loads configuration from environment variables and .env files,
 # validates all settings, and exits if configuration is invalid.
 # 
+# ARCHITECTURE NOTE: This is the main settings object that contains all default
+# application configuration (timeouts, CORS, logging, etc.) regardless of provider.
+# 
 # Import this in other modules: from config import settings
 settings = load_settings()
 
@@ -438,5 +441,14 @@ settings = load_settings()
 # =============================================================================
 # Load custom settings if PROVIDER_NAME=custom
 # This allows for extended configuration for custom providers
+#
+# ARCHITECTURE NOTE: This is conditionally loaded ONLY when PROVIDER_NAME=custom.
+# It inherits ALL fields from the main Settings class plus adds CUSTOM_VAR.
+# When PROVIDER_NAME != 'custom', this will be None.
+#
+# DESIGN RATIONALE:
+# - Avoids loading unnecessary configuration for standard providers
+# - Provides access to both default settings AND custom extensions
+# - Maintains clean separation between standard and custom provider logic
 from custom_settings import load_custom_settings
 custom_settings = load_custom_settings()

@@ -158,7 +158,31 @@
         "focus": false,
         "panel": "dedicated",
         "showReuseMessage": false,
-        "clear": false
+        "clear": false,
+        "group": "frontend"
+      }
+    },
+    {
+      "label": "Build Frontend (React)",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "build"],
+      "options": {
+        "cwd": "${workspaceFolder}/frontendReact"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": false,
+        "group": "frontend"
       }
     },
     {
@@ -197,6 +221,41 @@
         "command": "pkill",
         "args": ["-f", "python"]
       },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Kill Node.js Processes",
+      "type": "shell",
+      "command": "taskkill",
+      "args": ["/F", "/IM", "node.exe"],
+      "windows": {
+        "command": "taskkill",
+        "args": ["/F", "/IM", "node.exe"]
+      },
+      "linux": {
+        "command": "pkill",
+        "args": ["-f", "node"]
+      },
+      "osx": {
+        "command": "pkill",
+        "args": ["-f", "node"]
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Kill All Processes",
+      "dependsOn": ["Kill Python Processes", "Kill Node.js Processes"],
+      "dependsOrder": "parallel",
       "presentation": {
         "echo": true,
         "reveal": "always",

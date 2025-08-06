@@ -75,10 +75,24 @@
       "justMyCode": false
     },
     {
+      "name": "React Frontend",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontendReact",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal",
+      "presentation": {
+        "hidden": false,
+        "group": "frontend",
+        "order": 1
+      }
+    },
+    {
       "name": "Test MCP Working",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/test_mcp_working.py",
+      "program": "${workspaceFolder}/test/test_mcp_working.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "env": {
@@ -89,7 +103,7 @@
       "name": "Test Enhanced Logging",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/test_enhanced_logging.py",
+      "program": "${workspaceFolder}/test/test_enhanced_logging.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "env": {
@@ -100,7 +114,7 @@
       "name": "Test MCP Client (Enhanced)",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/backend/test_mcp_client.py",
+      "program": "${workspaceFolder}/test/test_mcp_client.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "env": {
@@ -127,6 +141,26 @@
       "presentation": {
         "hidden": false,
         "group": "servers",
+        "order": 2
+      }
+    },
+    {
+      "name": "Full Stack (Backend + React)",
+      "configurations": ["Backend Direct", "React Frontend"],
+      "stopAll": true,
+      "presentation": {
+        "hidden": false,
+        "group": "fullstack",
+        "order": 1
+      }
+    },
+    {
+      "name": "Complete Application (Backend + MCP + React)",
+      "configurations": ["Backend Direct", "MCP Server (FastMCP CLI)", "React Frontend"],
+      "stopAll": true,
+      "presentation": {
+        "hidden": false,
+        "group": "fullstack",
         "order": 2
       }
     }
