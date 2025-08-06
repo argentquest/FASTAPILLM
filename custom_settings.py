@@ -1,106 +1,121 @@
 """
 Custom Settings Module
 
-This module provides extended settings for custom providers that require
-additional configuration fields beyond the standard provider settings.
+This module provides a single custom variable for custom providers.
+When PROVIDER_NAME=custom, only CUSTOM_VAR is loaded from environment.
 
-When PROVIDER_NAME=custom, these additional settings are loaded and made
-available throughout the application.
+HeaderFactory Integration:
+- Static headers: Use PROVIDER_HEADERS environment variable (inherited from main settings)
+- Programmatic headers: Use HeaderFactory.register_header_function() to register custom header logic
+- The HeaderFactory will automatically use registered functions when provider_name="custom"
+- Custom header functions can access custom_var through the global custom_settings instance
+
+Example:
+    # In your initialization code
+    from header_factory import HeaderFactory
+    from custom_settings import load_custom_settings
+    
+    custom_settings = load_custom_settings()
+    
+    def generate_custom_headers():
+        return {
+            "X-Custom-Var": custom_settings.custom_var,
+            "X-Timestamp": str(int(time.time()))
+        }
+    
+    HeaderFactory.register_header_function("custom", generate_custom_headers)
 """
 
-from typing import Optional, Dict, Any
-from pydantic import Field, BaseModel, field_validator
+from typing import Optional, Dict
+from pydantic import Field, field_validator, AliasChoices
 from pydantic_settings import BaseSettings
-import json
 from logging_config import get_logger
+import json
 
 logger = get_logger(__name__)
 
 
 class CustomProviderSettings(BaseSettings):
-    """Extended settings for custom providers.
+    """Custom provider settings with all default application settings.
     
-    These settings are only loaded when PROVIDER_NAME=custom.
-    Add any custom fields here that your specific provider needs.
+    This class loads ALL default application settings from .env (same as main Settings class)
+    plus the additional CUSTOM_VAR field when PROVIDER_NAME=custom.
+    
+    This ensures that when using a custom provider, you have access to:
+    - All default application settings (debug_mode, cors_origins, timeouts, etc.)
+    - All default provider settings (api_key, base_url, model, etc.)
+    - The additional CUSTOM_VAR field
     """
     
-    # Custom authentication fields
-    custom_auth_token: Optional[str] = Field(default=None, env="CUSTOM_AUTH_TOKEN")
-    custom_api_secret: Optional[str] = Field(default=None, env="CUSTOM_API_SECRET")
-    custom_client_id: Optional[str] = Field(default=None, env="CUSTOM_CLIENT_ID")
-    custom_client_secret: Optional[str] = Field(default=None, env="CUSTOM_CLIENT_SECRET")
+    # =============================================================================
+    # PROVIDER CONFIGURATION (inherited from main settings)
+    # =============================================================================
+    provider_api_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("PROVIDER_API_KEY"))
+    provider_api_base_url: Optional[str] = Field(default=None, validation_alias=AliasChoices("PROVIDER_API_BASE_URL"))
+    provider_model: Optional[str] = Field(default=None, validation_alias=AliasChoices("PROVIDER_MODEL"))
+    provider_api_type: str = Field(default="openai", validation_alias=AliasChoices("PROVIDER_API_TYPE"))
+    provider_headers: Optional[Dict[str, str]] = Field(default=None, validation_alias=AliasChoices("PROVIDER_HEADERS"))
+    provider_name: str = Field(default="Custom Provider", validation_alias=AliasChoices("PROVIDER_NAME"))
     
-    # Custom endpoint configuration
-    custom_auth_endpoint: Optional[str] = Field(default=None, env="CUSTOM_AUTH_ENDPOINT")
-    custom_token_endpoint: Optional[str] = Field(default=None, env="CUSTOM_TOKEN_ENDPOINT")
+    # =============================================================================
+    # APPLICATION CONFIGURATION (inherited from main settings)
+    # =============================================================================
+    app_name: str = Field(default="AI Testing Suite", validation_alias=AliasChoices("APP_NAME"))
+    app_version: str = Field(default="1.0.0", validation_alias=AliasChoices("APP_VERSION"))
+    debug_mode: bool = Field(default=False, validation_alias=AliasChoices("DEBUG_MODE"))
     
-    # Custom behavior flags
-    custom_use_oauth: bool = Field(default=False, env="CUSTOM_USE_OAUTH")
-    custom_require_signature: bool = Field(default=False, env="CUSTOM_REQUIRE_SIGNATURE")
-    custom_enable_retry: bool = Field(default=True, env="CUSTOM_ENABLE_RETRY")
+    # =============================================================================
+    # TIMEOUT CONFIGURATION (inherited from main settings)
+    # =============================================================================
+    api_timeout: int = Field(default=30, validation_alias=AliasChoices("API_TIMEOUT"))
+    openai_timeout: int = Field(default=60, validation_alias=AliasChoices("OPENAI_TIMEOUT"))
     
-    # Custom metadata
-    custom_tenant_id: Optional[str] = Field(default=None, env="CUSTOM_TENANT_ID")
-    custom_environment: Optional[str] = Field(default="production", env="CUSTOM_ENVIRONMENT")
-    custom_api_version: Optional[str] = Field(default="v1", env="CUSTOM_API_VERSION")
-    custom_var: Optional[str] = Field(default=None, env="CUSTOM_VAR")
+    # =============================================================================
+    # LOGGING CONFIGURATION (inherited from main settings)
+    # =============================================================================
+    log_file_path: Optional[str] = Field(default="logs/app.log", validation_alias=AliasChoices("LOG_FILE_PATH"))
+    log_level: str = Field(default="INFO", validation_alias=AliasChoices("LOG_LEVEL"))
+    log_rotation_hours: int = Field(default=1, validation_alias=AliasChoices("LOG_ROTATION_HOURS"))
+    log_retention_days: int = Field(default=7, validation_alias=AliasChoices("LOG_RETENTION_DAYS"))
     
-    # Custom request configuration
-    custom_max_tokens: Optional[int] = Field(default=None, env="CUSTOM_MAX_TOKENS")
-    custom_temperature: Optional[float] = Field(default=None, env="CUSTOM_TEMPERATURE")
-    custom_timeout_seconds: int = Field(default=60, env="CUSTOM_TIMEOUT_SECONDS")
+    # =============================================================================
+    # RETRY CONFIGURATION (inherited from main settings)
+    # =============================================================================
+    retry_enabled: bool = Field(default=True, validation_alias=AliasChoices("RETRY_ENABLED"))
+    retry_max_attempts: int = Field(default=3, validation_alias=AliasChoices("RETRY_MAX_ATTEMPTS"))
+    retry_max_wait_seconds: int = Field(default=30, validation_alias=AliasChoices("RETRY_MAX_WAIT_SECONDS"))
+    retry_multiplier: float = Field(default=2.0, validation_alias=AliasChoices("RETRY_MULTIPLIER"))
+    retry_min_wait_seconds: float = Field(default=1.0, validation_alias=AliasChoices("RETRY_MIN_WAIT_SECONDS"))
     
-    # Custom additional headers (JSON string)
-    custom_extra_headers: Optional[Dict[str, str]] = Field(default=None, env="CUSTOM_EXTRA_HEADERS")
+    # =============================================================================
+    # RATE LIMITING CONFIGURATION (inherited from main settings)
+    # =============================================================================
+    rate_limiting_enabled: bool = Field(default=True, validation_alias=AliasChoices("RATE_LIMITING_ENABLED"))
+    rate_limit_per_ip: int = Field(default=60, validation_alias=AliasChoices("RATE_LIMIT_PER_IP"))
+    rate_limit_story_generation: int = Field(default=15, validation_alias=AliasChoices("RATE_LIMIT_STORY_GENERATION"))
+    rate_limit_list_endpoints: int = Field(default=30, validation_alias=AliasChoices("RATE_LIMIT_LIST_ENDPOINTS"))
+    rate_limit_health_status: int = Field(default=100, validation_alias=AliasChoices("RATE_LIMIT_HEALTH_STATUS"))
+    rate_limit_global_server: int = Field(default=1000, validation_alias=AliasChoices("RATE_LIMIT_GLOBAL_SERVER"))
     
-    # Custom model mapping (JSON string) - maps standard models to custom model names
-    custom_model_mapping: Optional[Dict[str, str]] = Field(default=None, env="CUSTOM_MODEL_MAPPING")
+    # =============================================================================
+    # CUSTOM PROVIDER EXTENSION
+    # =============================================================================
+    # Single custom variable from environment - the only addition to default settings
+    # This value can be accessed by HeaderFactory registered functions for dynamic header generation
+    custom_var: Optional[str] = Field(default=None, validation_alias=AliasChoices("CUSTOM_VAR"))
     
-    @field_validator("custom_extra_headers", "custom_model_mapping", mode='before')
+    @field_validator("provider_headers", mode='before')
     @classmethod
-    def parse_json_fields(cls, v):
-        """Parse JSON string fields."""
+    def parse_provider_headers(cls, v):
+        """Parse JSON string provider headers."""
         if v and isinstance(v, str):
             try:
                 return json.loads(v)
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse JSON field: {e}")
+                logger.error(f"Failed to parse PROVIDER_HEADERS JSON: {e}")
                 return None
         return v
     
-    def get_custom_headers(self) -> Dict[str, str]:
-        """Get all custom headers including extra headers."""
-        headers = {}
-        
-        # Add authentication headers based on configuration
-        if self.custom_use_oauth and self.custom_auth_token:
-            headers["Authorization"] = f"Bearer {self.custom_auth_token}"
-        elif self.custom_api_secret:
-            headers["X-API-Secret"] = self.custom_api_secret
-        
-        if self.custom_client_id:
-            headers["X-Client-ID"] = self.custom_client_id
-        
-        if self.custom_tenant_id:
-            headers["X-Tenant-ID"] = self.custom_tenant_id
-        
-        if self.custom_environment:
-            headers["X-Environment"] = self.custom_environment
-        
-        if self.custom_api_version:
-            headers["X-API-Version"] = self.custom_api_version
-        
-        # Add any extra headers
-        if self.custom_extra_headers:
-            headers.update(self.custom_extra_headers)
-        
-        return headers
-    
-    def map_model_name(self, standard_model: str) -> str:
-        """Map standard model names to custom provider model names."""
-        if self.custom_model_mapping and standard_model in self.custom_model_mapping:
-            return self.custom_model_mapping[standard_model]
-        return standard_model
     
     model_config = {
         "env_file": ".env",
@@ -113,6 +128,20 @@ class CustomProviderSettings(BaseSettings):
 def load_custom_settings() -> Optional[CustomProviderSettings]:
     """Load custom settings if provider is 'custom'.
     
+    This function only loads CustomProviderSettings when PROVIDER_NAME=custom.
+    The CustomProviderSettings inherits all default application settings
+    from the same .env file, plus adds the CUSTOM_VAR field.
+    
+    HeaderFactory Integration:
+        The returned settings instance can be used by HeaderFactory registered functions
+        to access custom_var and other settings for dynamic header generation.
+        
+        Example:
+            custom_settings = load_custom_settings()
+            def my_headers():
+                return {"X-Custom": custom_settings.custom_var}
+            HeaderFactory.register_header_function("custom", my_headers)
+    
     Returns:
         CustomProviderSettings instance if PROVIDER_NAME=custom, None otherwise
     """
@@ -124,8 +153,7 @@ def load_custom_settings() -> Optional[CustomProviderSettings]:
         if provider_name == "custom":
             settings = CustomProviderSettings()
             logger.info("Loaded custom provider settings", 
-                       custom_environment=settings.custom_environment,
-                       custom_use_oauth=settings.custom_use_oauth)
+                       custom_var=settings.custom_var)
             return settings
         
         return None
@@ -133,30 +161,3 @@ def load_custom_settings() -> Optional[CustomProviderSettings]:
     except Exception as e:
         logger.error(f"Failed to load custom settings: {e}")
         return None
-
-
-# Example .env configuration for custom provider:
-"""
-# Standard provider settings
-PROVIDER_NAME=custom
-PROVIDER_API_KEY=your-api-key
-PROVIDER_API_BASE_URL=https://custom-api.example.com/v1
-PROVIDER_MODEL=custom-model-name
-
-# Custom provider extensions (only used when PROVIDER_NAME=custom)
-CUSTOM_AUTH_TOKEN=your-oauth-token
-CUSTOM_API_SECRET=your-api-secret
-CUSTOM_CLIENT_ID=your-client-id
-CUSTOM_CLIENT_SECRET=your-client-secret
-CUSTOM_TENANT_ID=your-tenant-id
-CUSTOM_ENVIRONMENT=production
-CUSTOM_API_VERSION=v2
-CUSTOM_VAR=your-custom-string-value
-CUSTOM_USE_OAUTH=true
-CUSTOM_REQUIRE_SIGNATURE=false
-CUSTOM_MAX_TOKENS=4000
-CUSTOM_TEMPERATURE=0.7
-CUSTOM_TIMEOUT_SECONDS=120
-CUSTOM_EXTRA_HEADERS={"X-Custom-Header": "value", "X-Request-ID": "12345"}
-CUSTOM_MODEL_MAPPING={"gpt-3.5-turbo": "custom-chat-model", "gpt-4": "custom-advanced-model"}
-"""

@@ -16,8 +16,9 @@ Usage:
     )
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable, Any
 from logging_config import get_logger
+import inspect
 
 logger = get_logger(__name__)
 
@@ -27,8 +28,55 @@ class HeaderFactory:
     
     This class implements header generation for:
     - OpenAI: Standard OpenAI-compatible headers
-    - Custom: Extended headers using custom settings
+    - Programmatic: Custom header functions for dynamic generation
     """
+    
+    # Registry for custom header functions
+    _header_functions: Dict[str, Callable[[], Dict[str, str]]] = {}
+    
+    @classmethod
+    def register_header_function(cls, provider_name: str, func: Callable[[], Dict[str, str]]) -> None:
+        """Register a custom header function for a specific provider.
+        
+        Args:
+            provider_name: The provider name to associate with this function
+            func: A callable that returns a dictionary of headers
+            
+        Example:
+            def my_custom_headers():
+                return {
+                    "X-Request-Time": str(int(time.time())),
+                    "X-User-Agent": "CustomApp/1.0",
+                    "X-Custom-Token": generate_dynamic_token()
+                }
+            
+            HeaderFactory.register_header_function("mycustom", my_custom_headers)
+        """
+        cls._header_functions[provider_name.lower()] = func
+        logger.info(f"Registered custom header function for provider '{provider_name}'")
+    
+    @classmethod
+    def unregister_header_function(cls, provider_name: str) -> None:
+        """Unregister a custom header function.
+        
+        Args:
+            provider_name: The provider name to unregister
+        """
+        provider_lower = provider_name.lower()
+        if provider_lower in cls._header_functions:
+            del cls._header_functions[provider_lower]
+            logger.info(f"Unregistered custom header function for provider '{provider_name}'")
+    
+    @classmethod
+    def list_registered_functions(cls) -> Dict[str, str]:
+        """List all registered header functions.
+        
+        Returns:
+            Dictionary mapping provider names to function names
+        """
+        return {
+            provider: func.__name__ for provider, func in cls._header_functions.items()
+        }
     
     @staticmethod
     def create_headers(
@@ -65,6 +113,19 @@ class HeaderFactory:
             # For any other provider, just use the default headers
             logger.info(f"Using default headers for provider '{provider_name}'")
         
+        # Check if there's a registered header function for this provider
+        if provider_lower in HeaderFactory._header_functions:
+            try:
+                func = HeaderFactory._header_functions[provider_lower]
+                dynamic_headers = func()
+                if isinstance(dynamic_headers, dict):
+                    headers.update(dynamic_headers)
+                    logger.info(f"Applied dynamic headers from function '{func.__name__}' for provider '{provider_name}'")
+                else:
+                    logger.warning(f"Header function '{func.__name__}' returned non-dict: {type(dynamic_headers)}")
+            except Exception as e:
+                logger.error(f"Error calling header function for provider '{provider_name}': {e}", exc_info=True)
+        
         # Log the headers being used (without sensitive data)
         safe_headers = {k: v if k.lower() not in ['authorization', 'x-api-key', 'api-key', 'x-api-secret'] 
                        else '***' for k, v in headers.items()}
@@ -74,31 +135,21 @@ class HeaderFactory:
     
     @staticmethod
     def _create_custom_headers(api_key: Optional[str], base_headers: Dict[str, str]) -> Dict[str, str]:
-        """Create headers for custom provider using custom settings.
+        """Create headers for custom provider.
         
-        This method integrates with custom_settings when PROVIDER_NAME=custom
-        to support extended configuration options.
+        This method creates basic headers for custom providers. Dynamic headers
+        should be added via HeaderFactory.register_header_function() which are
+        applied automatically in the main create_headers() method.
         """
         headers = base_headers.copy()
         
-        # Import custom settings
-        from config import custom_settings
+        # Add API key if provided
+        if api_key:
+            headers["X-API-Key"] = api_key
         
-        if custom_settings:
-            # Use custom settings to build headers
-            custom_headers = custom_settings.get_custom_headers()
-            headers.update(custom_headers)
-            
-            # If OAuth is not used and we have an API key, add it
-            if not custom_settings.custom_use_oauth and api_key:
-                headers["X-API-Key"] = api_key
-        else:
-            # Fallback if custom settings not loaded
-            if api_key:
-                headers["X-API-Key"] = api_key
-            
-            headers["X-Provider-Type"] = "custom"
-            headers["X-Request-Source"] = "fastapi-llm"
+        # Add basic custom provider headers
+        headers["X-Provider-Type"] = "custom"
+        headers["X-Request-Source"] = "fastapi-llm"
         
         # Ensure content type is set
         if "Content-Type" not in headers:

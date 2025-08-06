@@ -6,7 +6,7 @@ import os
 import sys
 from typing import Optional, Dict
 from pydantic_settings import BaseSettings
-from pydantic import Field, field_validator, ValidationInfo
+from pydantic import Field, field_validator, ValidationInfo, AliasChoices
 import structlog
 import json
 
@@ -66,48 +66,48 @@ class Settings(BaseSettings):
     # Optional: provider name, headers, API type
     # API key for authentication - REQUIRED
     # Examples: OpenRouter key, Tachyon key, or "not-needed" for local models
-    provider_api_key: Optional[str] = Field(default=None, env="PROVIDER_API_KEY")
+    provider_api_key: Optional[str] = Field(default=None, validation_alias=AliasChoices("PROVIDER_API_KEY"))
     
     # Base URL for API calls - REQUIRED, must be OpenAI-compatible
     # Examples:
     # - OpenRouter: https://openrouter.ai/api/v1
     # - Ollama: http://localhost:11434/v1
     # - Tachyon: https://api.tachyon.ai/v1
-    provider_api_base_url: Optional[str] = Field(default=None, env="PROVIDER_API_BASE_URL")
+    provider_api_base_url: Optional[str] = Field(default=None, validation_alias=AliasChoices("PROVIDER_API_BASE_URL"))
     
     # Model identifier - REQUIRED
     # Examples: "llama2", "meta-llama/llama-3-8b-instruct", "gpt-3.5-turbo"
-    provider_model: Optional[str] = Field(default=None, env="PROVIDER_MODEL")
+    provider_model: Optional[str] = Field(default=None, validation_alias=AliasChoices("PROVIDER_MODEL"))
     
     # API compatibility type - currently only "openai" is supported
-    provider_api_type: str = Field(default="openai", env="PROVIDER_API_TYPE")
+    provider_api_type: str = Field(default="openai", validation_alias=AliasChoices("PROVIDER_API_TYPE"))
     
     # Additional HTTP headers as JSON string - OPTIONAL
     # Examples:
     # - OpenRouter: {"HTTP-Referer": "http://localhost:8000", "X-Title": "App Name"}
     # - Custom auth: {"X-API-Key": "key", "Authorization": "Bearer token"}
     # - Local models: {} (empty)
-    provider_headers: Optional[Dict[str, str]] = Field(default=None, env="PROVIDER_HEADERS")
+    provider_headers: Optional[Dict[str, str]] = Field(default=None, validation_alias=AliasChoices("PROVIDER_HEADERS"))
     
     # API version for providers that require it - OPTIONAL
-    provider_api_version: Optional[str] = Field(default=None, env="PROVIDER_API_VERSION")
+    provider_api_version: Optional[str] = Field(default=None, validation_alias=AliasChoices("PROVIDER_API_VERSION"))
     
     # Display name for the provider - shown in logs and UI
-    provider_name: str = Field(default="LLM Provider", env="PROVIDER_NAME")
+    provider_name: str = Field(default="LLM Provider", validation_alias=AliasChoices("PROVIDER_NAME"))
     
     # =============================================================================
     # APPLICATION CONFIGURATION
     # =============================================================================
     # Basic application settings and metadata
     # Application name - used in logs, headers, and identification
-    app_name: str = Field(default="AI Testing Suite", env="APP_NAME")
+    app_name: str = Field(default="AI Testing Suite", validation_alias=AliasChoices("APP_NAME"))
     
     # Application version - for tracking and debugging
-    app_version: str = Field(default="1.0.0", env="APP_VERSION")
+    app_version: str = Field(default="1.0.0", validation_alias=AliasChoices("APP_VERSION"))
     
     # Enable debug mode - shows detailed logs and error information
     # WARNING: Don't enable in production as it may expose sensitive data
-    debug_mode: bool = Field(default=False, env="DEBUG_MODE")
+    debug_mode: bool = Field(default=False, validation_alias=AliasChoices("DEBUG_MODE"))
     
     
     # =============================================================================
@@ -121,107 +121,107 @@ class Settings(BaseSettings):
         "http://localhost:3000",      # React production frontend
         "http://localhost:3001",      # React development frontend
         "http://localhost:5173"       # Vite default port
-    ], env="CORS_ORIGINS")
+    ], validation_alias=AliasChoices("CORS_ORIGINS"))
     
     # Maximum HTTP request size in bytes (default: 1MB)
     # Prevents large payloads from overwhelming the server
-    max_request_size: int = Field(default=1048576, env="MAX_REQUEST_SIZE")
+    max_request_size: int = Field(default=1048576, validation_alias=AliasChoices("MAX_REQUEST_SIZE"))
     
     # =============================================================================
     # TIMEOUT CONFIGURATION
     # =============================================================================
     # API and request timeout settings
     # General API timeout in seconds - for internal operations
-    api_timeout: int = Field(default=30, env="API_TIMEOUT")
+    api_timeout: int = Field(default=30, validation_alias=AliasChoices("API_TIMEOUT"))
     
     # Provider API timeout in seconds - how long to wait for AI responses
     # Increase for slower models or local setups, decrease for faster responses
-    openai_timeout: int = Field(default=60, env="OPENAI_TIMEOUT")
+    openai_timeout: int = Field(default=60, validation_alias=AliasChoices("OPENAI_TIMEOUT"))
     
     # =============================================================================
     # LOGGING CONFIGURATION
     # =============================================================================
     # Settings for application logging, rotation, and retention
     # Path to the main log file - set to None to disable file logging
-    log_file_path: Optional[str] = Field(default="logs/app.log", env="LOG_FILE_PATH")
+    log_file_path: Optional[str] = Field(default="logs/app.log", validation_alias=AliasChoices("LOG_FILE_PATH"))
     
     # Logging level - controls verbosity of logs
     # Options: DEBUG (most verbose), INFO, WARNING, ERROR (least verbose)
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    log_level: str = Field(default="INFO", validation_alias=AliasChoices("LOG_LEVEL"))
     
     # Hours between log file rotations - prevents log files from growing too large
-    log_rotation_hours: int = Field(default=1, env="LOG_ROTATION_HOURS")
+    log_rotation_hours: int = Field(default=1, validation_alias=AliasChoices("LOG_ROTATION_HOURS"))
     
     # Days to keep old log files before deletion - manages disk space
-    log_retention_days: int = Field(default=7, env="LOG_RETENTION_DAYS")
+    log_retention_days: int = Field(default=7, validation_alias=AliasChoices("LOG_RETENTION_DAYS"))
     
     # =============================================================================
     # INPUT VALIDATION  
     # =============================================================================
     # Limits for user input validation
     # Maximum length for character names - prevents excessively long inputs
-    max_character_length: int = Field(default=100, env="MAX_CHARACTER_LENGTH")
+    max_character_length: int = Field(default=100, validation_alias=AliasChoices("MAX_CHARACTER_LENGTH"))
     
     # Minimum length for character names - ensures meaningful inputs
-    min_character_length: int = Field(default=1, env="MIN_CHARACTER_LENGTH")
+    min_character_length: int = Field(default=1, validation_alias=AliasChoices("MIN_CHARACTER_LENGTH"))
     
     # =============================================================================
     # RETRY CONFIGURATION
     # =============================================================================
     # Settings for automatic retry mechanisms using tenacity
     # Enable/disable the retry mechanism globally
-    retry_enabled: bool = Field(default=True, env="RETRY_ENABLED")
+    retry_enabled: bool = Field(default=True, validation_alias=AliasChoices("RETRY_ENABLED"))
     
     # Maximum number of retry attempts for failed operations
     # Applies to API calls, database operations, and network requests
-    retry_max_attempts: int = Field(default=3, env="RETRY_MAX_ATTEMPTS")
+    retry_max_attempts: int = Field(default=3, validation_alias=AliasChoices("RETRY_MAX_ATTEMPTS"))
     
     # Maximum wait time between retries in seconds
     # Uses exponential backoff with jitter, capped at this value
-    retry_max_wait_seconds: int = Field(default=30, env="RETRY_MAX_WAIT_SECONDS")
+    retry_max_wait_seconds: int = Field(default=30, validation_alias=AliasChoices("RETRY_MAX_WAIT_SECONDS"))
     
     # Exponential backoff multiplier for retry delays
     # Each retry waits multiplier^attempt_number seconds (with jitter)
-    retry_multiplier: float = Field(default=2.0, env="RETRY_MULTIPLIER")
+    retry_multiplier: float = Field(default=2.0, validation_alias=AliasChoices("RETRY_MULTIPLIER"))
     
     # Minimum wait time between retries in seconds
     # Base delay before exponential backoff and jitter are applied
-    retry_min_wait_seconds: float = Field(default=1.0, env="RETRY_MIN_WAIT_SECONDS")
+    retry_min_wait_seconds: float = Field(default=1.0, validation_alias=AliasChoices("RETRY_MIN_WAIT_SECONDS"))
     
     # =============================================================================
     # RATE LIMITING CONFIGURATION
     # =============================================================================
     # Settings for API rate limiting using SlowAPI to prevent abuse
     # Enable/disable rate limiting globally
-    rate_limiting_enabled: bool = Field(default=True, env="RATE_LIMITING_ENABLED")
+    rate_limiting_enabled: bool = Field(default=True, validation_alias=AliasChoices("RATE_LIMITING_ENABLED"))
     
     # Per IP address limits (requests per minute)
     # General rate limit applied to all IPs regardless of endpoint
-    rate_limit_per_ip: int = Field(default=60, env="RATE_LIMIT_PER_IP")
+    rate_limit_per_ip: int = Field(default=60, validation_alias=AliasChoices("RATE_LIMIT_PER_IP"))
     
     # Per endpoint limits (requests per minute per IP)
     # AI story generation endpoints - most expensive operations
-    rate_limit_story_generation: int = Field(default=15, env="RATE_LIMIT_STORY_GENERATION")
+    rate_limit_story_generation: int = Field(default=15, validation_alias=AliasChoices("RATE_LIMIT_STORY_GENERATION"))
     
     # List and query endpoints - moderate database operations
-    rate_limit_list_endpoints: int = Field(default=30, env="RATE_LIMIT_LIST_ENDPOINTS")
+    rate_limit_list_endpoints: int = Field(default=30, validation_alias=AliasChoices("RATE_LIMIT_LIST_ENDPOINTS"))
     
     # Health and status endpoints - lightweight operations
-    rate_limit_health_status: int = Field(default=100, env="RATE_LIMIT_HEALTH_STATUS")
+    rate_limit_health_status: int = Field(default=100, validation_alias=AliasChoices("RATE_LIMIT_HEALTH_STATUS"))
     
     # Global server limits (requests per minute across all users)
     # Total server capacity to prevent overload
-    rate_limit_global_server: int = Field(default=1000, env="RATE_LIMIT_GLOBAL_SERVER")
+    rate_limit_global_server: int = Field(default=1000, validation_alias=AliasChoices("RATE_LIMIT_GLOBAL_SERVER"))
     
     # Rate limiting behavior settings
     # Storage backend for rate limit counters (memory, redis, database)
-    rate_limit_storage_backend: str = Field(default="memory", env="RATE_LIMIT_STORAGE_BACKEND")
+    rate_limit_storage_backend: str = Field(default="memory", validation_alias=AliasChoices("RATE_LIMIT_STORAGE_BACKEND"))
     
     # Time window type (fixed, sliding)
-    rate_limit_time_window: str = Field(default="fixed", env="RATE_LIMIT_TIME_WINDOW")
+    rate_limit_time_window: str = Field(default="fixed", validation_alias=AliasChoices("RATE_LIMIT_TIME_WINDOW"))
     
     # HTTP status code to return when rate limited
-    rate_limit_return_status_code: int = Field(default=429, env="RATE_LIMIT_RETURN_STATUS_CODE")
+    rate_limit_return_status_code: int = Field(default=429, validation_alias=AliasChoices("RATE_LIMIT_RETURN_STATUS_CODE"))
     
     @field_validator("provider_api_base_url")
     @classmethod

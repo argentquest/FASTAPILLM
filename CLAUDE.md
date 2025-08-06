@@ -112,16 +112,11 @@ Environment variables are used extensively. Key variables:
 - `DATABASE_URL` - Database connection string
 
 **Custom Provider Settings** (when `PROVIDER_NAME=custom`):
-- `CUSTOM_AUTH_TOKEN`, `CUSTOM_API_SECRET` - Authentication tokens
-- `CUSTOM_CLIENT_ID`, `CUSTOM_CLIENT_SECRET` - OAuth credentials
-- `CUSTOM_TENANT_ID` - Tenant identifier
-- `CUSTOM_ENVIRONMENT` - Environment name (production, staging)
-- `CUSTOM_API_VERSION` - API version
 - `CUSTOM_VAR` - Custom string variable for provider-specific data
-- `CUSTOM_USE_OAUTH` - Enable OAuth authentication
-- `CUSTOM_EXTRA_HEADERS` - Additional headers as JSON
-- `CUSTOM_MODEL_MAPPING` - Model name mapping as JSON
-- See `custom_settings.py` and `.env.example` for full list
+- All default application settings are also available (timeouts, logging, etc.)
+- Static headers: Use `PROVIDER_HEADERS` environment variable
+- Programmatic headers: Use HeaderFactory.register_header_function()
+- See `custom_settings.py`, `header_factory.py`, and `examples_custom_headers.py` for implementation patterns
 
 ## Development Patterns
 
