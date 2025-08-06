@@ -15,7 +15,8 @@ if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # Add backend directory to path
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(root_dir, 'backend'))
 
 async def test_api_logging():
     """Test main.py API logging"""

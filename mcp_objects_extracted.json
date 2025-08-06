@@ -66,6 +66,7 @@
     }
   },
   "resources": {},
+  "prompts": {},
   "methods": {
     "add_middleware": {
       "signature": "(middleware: 'Middleware') -> 'None'",

@@ -357,7 +357,8 @@ class Settings(BaseSettings):
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
-        "case_sensitive": False
+        "case_sensitive": False,
+        "extra": "ignore"  # Ignore extra fields that don't belong to this model
     }
 
 def load_settings() -> Settings:
@@ -431,3 +432,11 @@ def load_settings() -> Settings:
 # 
 # Import this in other modules: from config import settings
 settings = load_settings()
+
+# =============================================================================
+# CUSTOM PROVIDER SETTINGS
+# =============================================================================
+# Load custom settings if PROVIDER_NAME=custom
+# This allows for extended configuration for custom providers
+from custom_settings import load_custom_settings
+custom_settings = load_custom_settings()

@@ -8,7 +8,12 @@ import sys
 import os
 from typing import Any, Dict, List
 from pprint import pprint
-# Add parent directory to path for retry_utils\nsys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\nfrom retry_utils import get_retry_stats
+# Add parent directory to path for imports
+parent_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(parent_dir)
+sys.path.insert(0, root_dir)
+sys.path.insert(0, os.path.join(root_dir, 'backend'))
+from retry_utils import get_retry_stats
 
 # Fix encoding for Windows
 if sys.platform == "win32":
@@ -23,6 +28,7 @@ def extract_mcp_objects(mcp_instance) -> Dict[str, Any]:
         "attributes": {},
         "tools": {},
         "resources": {},
+        "prompts": {},
         "methods": {},
         "properties": {},
         "internal_attributes": {}
@@ -40,7 +46,7 @@ def extract_mcp_objects(mcp_instance) -> Dict[str, Any]:
             # Categorize attributes
             if attr_name.startswith('_'):
                 # Internal attributes
-                if attr_name in ['_tools', '_resources', '_prompts', '_registry']:
+                if attr_name in ['_tools', '_resources', '_prompts', '_registry', '_handler_manager']:
                     mcp_info["internal_attributes"][attr_name] = {
                         "type": type(attr_value).__name__,
                         "value": str(attr_value)[:100] if not isinstance(attr_value, dict) else f"Dict with {len(attr_value)} items"
@@ -127,12 +133,56 @@ def extract_mcp_objects(mcp_instance) -> Dict[str, Any]:
                     }
             break
     
+    # Special handling for FastMCP resources via handler_manager
+    try:
+        if hasattr(mcp_instance, '_handler_manager') and hasattr(mcp_instance._handler_manager, 'resources'):
+            resources = mcp_instance._handler_manager.resources
+            for resource_uri, resource in resources.items():
+                mcp_info["resources"][resource_uri] = {
+                    "uri": resource_uri,
+                    "name": getattr(resource, 'name', resource_uri),
+                    "description": getattr(resource, 'description', getattr(resource, '__doc__', 'No description')),
+                    "source": "_handler_manager.resources"
+                }
+    except Exception as e:
+        mcp_info["resources"]["_extraction_error"] = {"error": str(e)}
+    
+    # Try to extract prompts
+    prompt_attrs = ['_prompts', 'prompts', '_prompt_manager', 'prompt_manager']
+    for prompt_attr in prompt_attrs:
+        if hasattr(mcp_instance, prompt_attr):
+            prompts = getattr(mcp_instance, prompt_attr)
+            if isinstance(prompts, dict):
+                for prompt_name, prompt in prompts.items():
+                    mcp_info["prompts"][prompt_name] = {
+                        "name": getattr(prompt, 'name', prompt_name),
+                        "description": getattr(prompt, 'description', getattr(prompt, '__doc__', 'No description')),
+                        "tags": getattr(prompt, 'tags', []),
+                        "source": prompt_attr
+                    }
+            break
+    
+    # Special handling for FastMCP prompts via handler_manager
+    try:
+        if hasattr(mcp_instance, '_handler_manager') and hasattr(mcp_instance._handler_manager, 'prompts'):
+            prompts = mcp_instance._handler_manager.prompts
+            for prompt_name, prompt in prompts.items():
+                mcp_info["prompts"][prompt_name] = {
+                    "name": getattr(prompt, 'name', prompt_name),
+                    "description": getattr(prompt, 'description', getattr(prompt, '__doc__', 'No description')),
+                    "tags": list(getattr(prompt, 'tags', set())),
+                    "parameters": str(getattr(prompt, 'input_schema', 'Unknown'))[:200],
+                    "source": "_handler_manager.prompts"
+                }
+    except Exception as e:
+        mcp_info["prompts"]["_extraction_error"] = {"error": str(e)}
+    
     return mcp_info
 
 async def test_mcp_with_extraction():
     """Test MCP server and extract all objects"""
     # Import the mcp instance from the server file
-    from mcp_server import mcp
+    from backend.mcp_server import mcp
     
     print("="*60)
     print("MCP SERVER OBJECT EXTRACTION")
@@ -180,11 +230,25 @@ async def test_mcp_with_extraction():
     print("\n4. Discovered Resources:")
     if mcp_objects['resources']:
         for resource_name, resource_info in mcp_objects['resources'].items():
-            print(f"   - {resource_name}: {resource_info['description']}")
+            if not resource_name.startswith('_'):
+                print(f"   - {resource_name}:")
+                print(f"     Description: {resource_info.get('description', 'No description')}")
+                print(f"     Source: {resource_info.get('source', 'Unknown')}")
     else:
         print("   No resources found")
     
-    print("\n5. Available Methods:")
+    print("\n5. Discovered Prompts:")
+    if mcp_objects['prompts']:
+        for prompt_name, prompt_info in mcp_objects['prompts'].items():
+            if not prompt_name.startswith('_'):
+                print(f"   - {prompt_name}:")
+                print(f"     Description: {prompt_info.get('description', 'No description')}")
+                print(f"     Tags: {prompt_info.get('tags', [])}")
+                print(f"     Source: {prompt_info.get('source', 'Unknown')}")
+    else:
+        print("   No prompts found")
+    
+    print("\n6. Available Methods:")
     for method_name, method_info in sorted(mcp_objects['methods'].items())[:10]:
         if not method_name.startswith('_'):
             print(f"   - {method_name}{method_info['signature']}")
@@ -219,8 +283,42 @@ async def test_mcp_with_extraction():
         
         print("\n" + "="*50 + "\n")
         
-        # Test 2: Generate a simple story with LangChain
-        print("2. Testing generate_story_langchain tool:")
+        # Test 2: Get config resource
+        print("2. Testing data://config resource:")
+        try:
+            config_result = await client.read_resource("data://config")
+            # Extract the content from ReadResourceResult
+            config_data = config_result.contents[0].text if config_result.contents else "{}"
+            if isinstance(config_data, str):
+                config_data = json.loads(config_data)
+            print(json.dumps(config_data, indent=2))
+        except Exception as e:
+            print(f"Error: {e}")
+        
+        print("\n" + "="*50 + "\n")
+        
+        # Test 3: Get a story prompt
+        print("3. Testing classic_adventure_story prompt:")
+        try:
+            prompt_result = await client.get_prompt("classic_adventure_story", {
+                "primary_character": "Alice",
+                "secondary_character": "Bob",
+                "setting": "mysterious island"
+            })
+            # Extract the prompt content
+            if prompt_result.messages:
+                for msg in prompt_result.messages:
+                    print(f"Role: {msg.role}")
+                    print(f"Content: {msg.content.text if hasattr(msg.content, 'text') else msg.content}")
+            else:
+                print("No prompt messages returned")
+        except Exception as e:
+            print(f"Error: {e}")
+        
+        print("\n" + "="*50 + "\n")
+        
+        # Test 4: Generate a simple story with LangChain
+        print("4. Testing generate_story_langchain tool:")
         try:
             result = await client.call_tool("generate_story_langchain", {
                 "primary_character": "Alice",

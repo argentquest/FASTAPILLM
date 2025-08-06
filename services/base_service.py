@@ -10,6 +10,7 @@ from logging_config import get_logger
 from pricing import calculate_cost, get_model_pricing
 from transaction_context import TransactionAware, get_current_transaction_guid
 from retry_utils import retry_api_calls, retry_network_ops
+from header_factory import HeaderFactory
 from exceptions import (
     APIKeyError,
     APIConnectionError as CustomAPIConnectionError,
@@ -38,12 +39,12 @@ class BaseService(ABC, TransactionAware):
     
     def __init__(self):
         self._client: Optional[AsyncOpenAI] = None
+        self._http_client: Optional[httpx.AsyncClient] = None
         self.service_name = self.__class__.__name__
         self.provider_name = settings.provider_name
         
-    @property
-    def client(self) -> AsyncOpenAI:
-        """Lazy initialization of OpenAI client.
+    async def _ensure_client(self) -> AsyncOpenAI:
+        """Ensure the OpenAI client is initialized.
         
         Creates the client on first access to avoid initialization
         overhead during service creation.
@@ -55,11 +56,11 @@ class BaseService(ABC, TransactionAware):
             APIKeyError: If client initialization fails.
         """
         if self._client is None:
-            self._client = self._create_client()
+            self._client = await self._create_client()
         return self._client
     
     @retry_network_ops
-    def _create_client(self) -> AsyncOpenAI:
+    async def _create_client(self) -> AsyncOpenAI:
         """Create OpenAI client with connection pooling.
         
         Initializes the client for the custom provider
@@ -79,7 +80,7 @@ class BaseService(ABC, TransactionAware):
         """
         try:
             # Create httpx client with connection pooling
-            http_client = httpx.AsyncClient(
+            self._http_client = httpx.AsyncClient(
                 timeout=httpx.Timeout(settings.openai_timeout),
                 limits=httpx.Limits(
                     max_keepalive_connections=5,
@@ -87,13 +88,14 @@ class BaseService(ABC, TransactionAware):
                 )
             )
             
-            # Provider (e.g., Tachyon, Ollama, LM Studio)
-            # HEADERS CONFIGURATION: To change provider headers, update PROVIDER_HEADERS in .env
-            # Examples:
-            # - OpenRouter: {"HTTP-Referer": "http://localhost:8000", "X-Title": "App Name"}
-            # - Tachyon/Standard: {} (empty - uses default Authorization header)
-            # - Custom Auth: {"X-API-Key": "your-key", "Authorization": "Bearer token"}
-            headers = settings.provider_headers or {}
+            # Use HeaderFactory to create provider-specific headers
+            # The factory will handle different authentication schemes and metadata
+            # based on the PROVIDER_NAME setting (e.g., 'openai', 'custom', 'azure')
+            headers = HeaderFactory.create_headers(
+                provider_name=settings.provider_name,
+                api_key=settings.provider_api_key,
+                default_headers=settings.provider_headers
+            )
             
             if settings.provider_api_type == "openai":
                 # Use OpenAI-compatible client
@@ -101,7 +103,7 @@ class BaseService(ABC, TransactionAware):
                 client = AsyncOpenAI(
                     api_key=settings.provider_api_key,  # Sent as Authorization: Bearer {key}
                     base_url=settings.provider_api_base_url,
-                    http_client=http_client,
+                    http_client=self._http_client,
                     max_retries=0,  # Disable OpenAI client retries - we handle retries with tenacity
                     default_headers=headers  # ← HEADERS ARE SET HERE for all requests
                 )
@@ -209,8 +211,9 @@ class BaseService(ABC, TransactionAware):
                         message_count=len(messages))
             
             start_time = time.time()
+            client = await self._ensure_client()
             response = await asyncio.wait_for(
-                self.client.chat.completions.create(**params),
+                client.chat.completions.create(**params),
                 timeout=settings.openai_timeout
             )
             execution_time_ms = (time.time() - start_time) * 1000
@@ -340,6 +343,6 @@ class BaseService(ABC, TransactionAware):
             ... finally:
             ...     await service.close()
         """
-        if self._client and hasattr(self._client, '_client'):
-            await self._client._client.aclose()
-            logger.info("Client connection closed", service=self.service_name)
+        if self._http_client:
+            await self._http_client.aclose()
+            logger.info("HTTP client connection closed", service=self.service_name)

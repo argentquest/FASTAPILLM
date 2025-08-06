@@ -251,7 +251,8 @@ def configure_logging(
     # Configure third-party loggers to use consistent formatting
     third_party_loggers = [
         'uvicorn', 'uvicorn.access', 'uvicorn.error', 'fastapi',
-        'sqlalchemy.engine', 'sqlalchemy', 'alembic'
+        'sqlalchemy.engine', 'sqlalchemy', 'alembic',
+        'tenacity', 'openai', 'httpx', 'httpcore'  # Suppress retry-related logs
     ]
     
     for logger_name in third_party_loggers:
@@ -268,6 +269,10 @@ def configure_logging(
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
     else:
         logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+    
+    # Suppress retry-related logs to avoid unformatted output
+    for retry_logger in ['tenacity', 'openai', 'httpx', 'httpcore']:
+        logging.getLogger(retry_logger).setLevel(logging.WARNING)
     
     # Configure structlog with dual output support
     processors = [

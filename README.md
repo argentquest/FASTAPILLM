@@ -269,29 +269,41 @@ All configuration is done via environment variables. See `.env.example` for avai
 
 ## Testing
 
-### Backend Testing
+All test scripts are now organized in the `test/` directory. See [test/README.md](test/README.md) for detailed test documentation.
+
+### Quick Test Commands
 ```bash
-# Run all tests
+# MCP Tests
+python test/test_mcp_client.py      # Comprehensive MCP testing with object extraction
+python test/test_mcp_working.py      # Basic MCP functionality test
+
+# Logging Tests
+python test/test_enhanced_logging.py # Test enhanced logging system
+
+# Retry Tests  
+python test/test_retry_functionality.py  # Comprehensive retry testing
+python test/test_retry_simple.py         # Simple retry test
+
+# Rate Limiting Tests
+python test/test_rate_limiting.py         # Comprehensive rate limiting
+python test/test_rate_limiting_simple.py  # Simple rate limiting test
+python test/test_rate_limiting_intensive.py # Intensive rate limit testing
+
+# Frontend Testing (React)
+cd frontendReact
+npm test  # Run React tests
+```
+
+### Backend Testing with pytest
+```bash
+# Run all unit tests
 pytest
 
 # Run with coverage
 pytest --cov=.
-```
 
-### MCP Server Testing
-```bash
-# Test MCP tools directly
-python test_mcp_working.py
-
-# Test with FastMCP client
-python test_mcp_fastmcp.py
-```
-
-### Frontend Testing (React)
-```bash
-cd frontendReact
-# Run React tests (when implemented)
-npm test
+# Run specific test module
+pytest tests/test_validation.py
 ```
 
 ## Frontend Architecture

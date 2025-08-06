@@ -8,15 +8,17 @@ import asyncio
 import json
 import sys
 import os
-from retry_utils import get_retry_stats
-
 # Fix encoding for Windows
 if sys.platform == "win32":
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# Add backend directory to path
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))
+# Add parent and backend directory to path
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, root_dir)
+sys.path.insert(0, os.path.join(root_dir, 'backend'))
+
+from retry_utils import get_retry_stats
 
 async def test_fastmcp_client():
     """Test MCP server using proper FastMCP Client"""

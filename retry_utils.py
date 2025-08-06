@@ -65,6 +65,26 @@ from fastapi import HTTPException
 
 logger = get_logger(__name__)
 
+# Suppress or redirect tenacity's internal logging to avoid unformatted console output
+import logging as stdlib_logging
+tenacity_logger = stdlib_logging.getLogger('tenacity')
+tenacity_logger.setLevel(stdlib_logging.WARNING)  # Only show warnings and errors
+tenacity_logger.propagate = False  # Don't propagate to root logger
+
+# Also suppress OpenAI and httpx retry logs that might not be formatted
+openai_logger = stdlib_logging.getLogger('openai')
+openai_logger.setLevel(stdlib_logging.WARNING)
+openai_logger.propagate = False
+
+httpx_logger = stdlib_logging.getLogger('httpx')
+httpx_logger.setLevel(stdlib_logging.WARNING)
+httpx_logger.propagate = False
+
+# Suppress httpcore logs as well (used by httpx internally)
+httpcore_logger = stdlib_logging.getLogger('httpcore')
+httpcore_logger.setLevel(stdlib_logging.WARNING)
+httpcore_logger.propagate = False
+
 # =============================================================================
 # ERROR CLASSIFICATION
 # =============================================================================

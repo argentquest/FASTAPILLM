@@ -4,11 +4,25 @@ MCP Server for AI Story Generator
 This module implements a standalone MCP (Model Context Protocol) server that provides
 AI story generation tools following FastMCP best practices from https://gofastmcp.com.
 
-The server exposes four main tools:
+The server exposes:
+
+Tools (4):
 - generate_story_semantic_kernel: Generate stories using Microsoft's Semantic Kernel
 - generate_story_langchain: Generate stories using LangChain framework  
 - generate_story_langgraph: Generate stories using LangGraph with advanced editing
 - list_frameworks: List all available AI frameworks with descriptions
+
+Resources (2):
+- data://config: Server configuration and version information
+- stories/recent/{limit}: Recent generated stories (pending DB integration)
+
+Prompts (6):
+- classic_adventure_story: Adventure story prompts with customizable settings
+- mystery_story: Mystery/detective story prompts
+- sci_fi_story: Science fiction story prompts
+- fantasy_quest_story: Fantasy quest story prompts
+- comedy_story: Humorous story prompts
+- story_prompt_list: List of creative story ideas
 
 The server is designed to run independently from the main FastAPI application,
 following FastMCP best practices for clean separation of concerns.
@@ -18,7 +32,7 @@ Features:
 - Performance monitoring and timing metrics
 - Detailed error handling and logging
 - Cost tracking per story generation
-- FastMCP 2.0 compatibility
+- FastMCP 2.0 compatibility with prompts support
 
 Usage:
     # Run standalone
@@ -31,12 +45,20 @@ Example:
     from fastmcp import Client
     client = Client(mcp)
     async with client:
+        # Call a tool
         result = await client.call_tool("list_frameworks", {})
-        print(result)
+        
+        # Get a prompt
+        prompt = await client.get_prompt("classic_adventure_story", 
+                                        {"primary_character": "Alice", 
+                                         "secondary_character": "Bob"})
+        print(prompt)
 """
 
 from fastmcp import FastMCP
-from typing import Dict, Any
+from fastmcp.prompts.prompt import Message, PromptMessage, TextContent
+from pydantic import Field
+from typing import Dict, Any, List
 import asyncio
 import sys
 import os
@@ -336,6 +358,36 @@ async def list_frameworks() -> Dict[str, Any]:
         
         return frameworks_data
 
+# MCP Resource: Config/Version
+@mcp.resource("data://config")
+def get_config() -> Dict[str, Any]:
+    """Get configuration and version information for the MCP server.
+    
+    Returns server metadata including version, capabilities, and configuration.
+    This resource provides static information about the MCP server instance.
+    
+    Returns:
+        Dict containing:
+        - version: Server version number
+        - name: Server name
+        - capabilities: List of available capabilities
+        - framework_count: Number of supported AI frameworks
+        - created_at: ISO timestamp of server start time
+    """
+    return {
+        "version": "1.0.0",
+        "name": "AI Story Generator MCP Server",
+        "capabilities": [
+            "story_generation",
+            "multi_framework_support",
+            "cost_tracking",
+            "performance_monitoring"
+        ],
+        "framework_count": 3,
+        "frameworks": ["semantic_kernel", "langchain", "langgraph"],
+        "created_at": datetime.utcnow().isoformat() + "Z"
+    }
+
 # MCP Resource: Recent Stories
 @mcp.resource("stories/recent/{limit}")
 @retry_database_ops
@@ -391,6 +443,119 @@ async def get_recent_stories(limit: int = 10) -> Dict[str, Any]:
         "total_count": 0
     }
 
+# MCP Prompts: Story Generation Prompts
+@mcp.prompt(
+    name="classic_adventure_story",
+    description="Generate a classic adventure story prompt with two characters",
+    tags={"story", "adventure", "creative"}
+)
+def classic_adventure_story(
+    primary_character: str = Field(description="The main protagonist of the story"),
+    secondary_character: str = Field(description="The supporting character or companion"),
+    setting: str = Field(default="enchanted forest", description="The story setting")
+) -> str:
+    """Creates a prompt for generating a classic adventure story."""
+    return (
+        f"Write an engaging adventure story featuring {primary_character} as the main protagonist "
+        f"and {secondary_character} as their companion. Set the story in a {setting}. "
+        f"Include elements of mystery, friendship, and personal growth. "
+        f"The story should be suitable for all ages with vivid descriptions and dialogue."
+    )
+
+@mcp.prompt(
+    name="mystery_story", 
+    description="Generate a mystery story prompt with investigation elements",
+    tags={"story", "mystery", "detective"}
+)
+def mystery_story(
+    detective: str = Field(description="The detective or investigator character"),
+    suspect: str = Field(description="The mysterious character involved in the case"),
+    location: str = Field(default="old mansion", description="Where the mystery takes place")
+) -> PromptMessage:
+    """Creates a prompt for generating a mystery story."""
+    content = (
+        f"Create a compelling mystery story where {detective} must investigate a puzzling case "
+        f"involving {suspect} at a {location}. Include clues, red herrings, and a surprising "
+        f"revelation. The story should build suspense while maintaining logical consistency."
+    )
+    return PromptMessage(
+        role="user",
+        content=TextContent(type="text", text=content)
+    )
+
+@mcp.prompt(
+    name="sci_fi_story",
+    description="Generate a science fiction story prompt",
+    tags={"story", "sci-fi", "futuristic"}
+)
+def sci_fi_story(
+    protagonist: str = Field(description="The main character"),
+    companion: str = Field(description="The companion or crew member"),
+    technology: str = Field(default="time travel", description="The key technology or concept")
+) -> str:
+    """Creates a prompt for generating a sci-fi story."""
+    return (
+        f"Write a thought-provoking science fiction story starring {protagonist} and {companion}. "
+        f"The story should revolve around {technology} and explore its implications. "
+        f"Include futuristic elements, ethical dilemmas, and imaginative world-building."
+    )
+
+@mcp.prompt(
+    name="fantasy_quest_story",
+    description="Generate a fantasy quest story prompt",
+    tags={"story", "fantasy", "quest", "magic"}
+)
+def fantasy_quest_story(
+    hero: str = Field(description="The hero of the quest"),
+    mentor: str = Field(description="The wise mentor or guide"),
+    artifact: str = Field(default="Crystal of Power", description="The magical item to find")
+) -> str:
+    """Creates a prompt for generating a fantasy quest story."""
+    return (
+        f"Craft an epic fantasy quest where {hero}, guided by the wise {mentor}, "
+        f"must find the legendary {artifact}. Include magical creatures, challenging trials, "
+        f"and the hero's personal transformation throughout their journey."
+    )
+
+@mcp.prompt(
+    name="comedy_story",
+    description="Generate a humorous story prompt",
+    tags={"story", "comedy", "humor"}
+)
+def comedy_story(
+    character1: str = Field(description="The first comedic character"),
+    character2: str = Field(description="The second comedic character"),
+    situation: str = Field(default="cooking competition", description="The funny situation")
+) -> PromptMessage:
+    """Creates a prompt for generating a comedy story."""
+    content = (
+        f"Write a hilarious story about {character1} and {character2} who find themselves in "
+        f"a {situation}. Include misunderstandings, slapstick moments, witty dialogue, "
+        f"and an unexpectedly heartwarming conclusion."
+    )
+    return PromptMessage(
+        role="user",
+        content=TextContent(type="text", text=content)
+    )
+
+@mcp.prompt(
+    name="story_prompt_list",
+    description="Get a list of creative story prompts for various genres",
+    tags={"story", "prompts", "ideas"}
+)
+def story_prompt_list() -> List[str]:
+    """Returns a list of creative story prompts."""
+    return [
+        "A time traveler accidentally changes a minor historical event with major consequences",
+        "Two rival chefs must work together to save their restaurant from closing",
+        "A child discovers their imaginary friend is actually from another dimension",
+        "An AI develops emotions and must navigate human relationships",
+        "A retired superhero is forced back into action by an unexpected threat",
+        "Two strangers wake up with swapped abilities and must find each other",
+        "A librarian discovers that certain books are portals to other worlds",
+        "A ghost and a living person become roommates and solve mysteries together"
+    ]
+
 # Following FastMCP best practice - include __main__ block
 if __name__ == "__main__":
     logger.info("Starting AI Story Generator MCP Server",
@@ -398,12 +563,19 @@ if __name__ == "__main__":
                 working_dir=os.getcwd(),
                 python_path=sys.executable)
     
-    # Log available tools
+    # Log available tools and resources
     logger.info("MCP Server tools registered",
                 tools=["generate_story_semantic_kernel", 
                       "generate_story_langchain", 
                       "generate_story_langgraph",
                       "list_frameworks"])
+    
+    logger.info("MCP Server resources registered",
+                resources=["data://config", "stories/recent/{limit}"])
+    
+    logger.info("MCP Server prompts registered",
+                prompts=["classic_adventure_story", "mystery_story", "sci_fi_story",
+                        "fantasy_quest_story", "comedy_story", "story_prompt_list"])
     
     try:
         mcp.run()

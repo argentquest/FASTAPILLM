@@ -23,7 +23,8 @@
       "Bash(sqlite3:*)",
       "Bash(alembic upgrade:*)",
       "Bash(npm outdated)",
-      "Bash(npx vite-bundle-analyzer:*)"
+      "Bash(npx vite-bundle-analyzer:*)",
+      "Bash(pytest:*)"
     ],
     "deny": []
   }

@@ -11,6 +11,9 @@ FASTAPILLM is a FastAPI-based AI content generation platform that supports multi
 - ✅ **Enhanced Logging**: Comprehensive request tracking and performance metrics
 - ✅ **VS Code Integration**: Full debugging support for both FastAPI and MCP servers
 - ✅ **MCP Object Extraction**: Complete tool and structure analysis capabilities
+- ✅ **Custom Provider Support**: Extended configuration system for custom providers
+- ✅ **Header Factory**: Dynamic header generation based on provider type
+- ✅ **Async Service Layer**: Fully async-compatible base service implementation
 
 ## Essential Commands
 
@@ -23,11 +26,13 @@ pip install -r requirements.txt   # Install dependencies
 # MCP Server (FastMCP CLI)
 fastmcp run backend.mcp_server:mcp  # Run MCP server with FastMCP CLI
 
-# Testing
-pytest                           # Run all tests
-python backend/test_mcp_client.py      # Enhanced MCP object extraction
-python test_mcp_working.py             # Basic MCP functionality test
-python test_enhanced_logging.py        # Logging system verification
+# Testing (All tests now in test/ directory)
+pytest                               # Run all tests
+python test/test_mcp_client.py       # Enhanced MCP object extraction
+python test/test_mcp_working.py      # Basic MCP functionality test
+python test/test_enhanced_logging.py # Logging system verification
+python test/test_retry_functionality.py # Retry mechanism testing
+python test/test_rate_limiting.py    # Rate limiting functionality
 
 # Docker
 docker-compose up --build        # Build and run with Docker
@@ -72,23 +77,51 @@ Prompts are externalized in `/prompts/{framework}/` directories as text files, l
 - Supports both direct execution and FastMCP CLI
 - Comprehensive logging with request tracking
 
-**Available MCP Tools:**
+**Available MCP Components:**
+
+**Tools (4):**
 - `generate_story_semantic_kernel` - Microsoft Semantic Kernel stories
 - `generate_story_langchain` - LangChain framework stories
 - `generate_story_langgraph` - LangGraph with advanced editing
 - `list_frameworks` - List all available AI frameworks
 
+**Resources (2):**
+- `data://config` - Server configuration and version information
+- `stories/recent/{limit}` - Recent generated stories (pending DB integration)
+
+**Prompts (6):**
+- `classic_adventure_story` - Adventure story prompts with customizable settings
+- `mystery_story` - Mystery/detective story prompts
+- `sci_fi_story` - Science fiction story prompts
+- `fantasy_quest_story` - Fantasy quest story prompts
+- `comedy_story` - Humorous story prompts
+- `story_prompt_list` - List of creative story ideas
+
 **Testing & Extraction:**
-- `test_mcp_client.py` - Enhanced MCP object extraction and analysis
-- `test_mcp_working.py` - Basic MCP functionality testing
+- `test/test_mcp_client.py` - Enhanced MCP object extraction and analysis
+- `test/test_mcp_working.py` - Basic MCP functionality testing
 - Exports complete MCP structure to `mcp_objects_extracted.json`
 
 ### Configuration
 Environment variables are used extensively. Key variables:
-- `AZURE_OPENAI_KEY`, `AZURE_OPENAI_ENDPOINT` - Azure OpenAI settings
-- `OPENROUTER_API_KEY` - OpenRouter API key
-- `LANGSMITH_API_KEY` - LangSmith tracing
+- `PROVIDER_NAME` - Provider type ('openai' or 'custom')
+- `PROVIDER_API_KEY` - API key for the provider
+- `PROVIDER_API_BASE_URL` - Base URL for API calls
+- `PROVIDER_MODEL` - Model identifier
+- `PROVIDER_HEADERS` - Optional JSON headers
 - `DATABASE_URL` - Database connection string
+
+**Custom Provider Settings** (when `PROVIDER_NAME=custom`):
+- `CUSTOM_AUTH_TOKEN`, `CUSTOM_API_SECRET` - Authentication tokens
+- `CUSTOM_CLIENT_ID`, `CUSTOM_CLIENT_SECRET` - OAuth credentials
+- `CUSTOM_TENANT_ID` - Tenant identifier
+- `CUSTOM_ENVIRONMENT` - Environment name (production, staging)
+- `CUSTOM_API_VERSION` - API version
+- `CUSTOM_VAR` - Custom string variable for provider-specific data
+- `CUSTOM_USE_OAUTH` - Enable OAuth authentication
+- `CUSTOM_EXTRA_HEADERS` - Additional headers as JSON
+- `CUSTOM_MODEL_MAPPING` - Model name mapping as JSON
+- See `custom_settings.py` and `.env.example` for full list
 
 ## Development Patterns
 
