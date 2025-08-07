@@ -5,7 +5,7 @@ import time
 from openai import AsyncOpenAI, APIError, APIConnectionError, RateLimitError
 import httpx
 
-from config import settings
+from config import settings, custom_settings
 from logging_config import get_logger
 from pricing import calculate_cost, get_model_pricing
 from transaction_context import TransactionAware, get_current_transaction_guid
@@ -29,12 +29,29 @@ class BaseService(ABC, TransactionAware):
     - Connection pooling and retry logic
     - Error handling and logging
     - Token usage tracking
+    - Access to both main and custom settings configurations
     
-    Subclasses must implement the generate_story method.
+    Subclasses must implement the generate_content method.
     
     Attributes:
         service_name: The name of the service class.
         provider_name: The custom provider name.
+        custom_settings: CustomProviderSettings instance (None if PROVIDER_NAME != 'custom').
+                        Provides access to CUSTOM_VAR and all default settings when using
+                        custom providers.
+    
+    Settings Access:
+        - settings: Global main settings (always available)
+        - self.custom_settings: Custom provider settings (available when PROVIDER_NAME=custom)
+        
+    Example Usage in Subclasses:
+        if self.custom_settings and self.custom_settings.custom_var:
+            # Access custom variable for provider-specific logic
+            custom_value = self.custom_settings.custom_var
+            
+        # Custom settings also has ALL default settings
+        if self.custom_settings:
+            timeout = self.custom_settings.api_timeout  # Same as settings.api_timeout
     """
     
     def __init__(self):
@@ -42,6 +59,8 @@ class BaseService(ABC, TransactionAware):
         self._http_client: Optional[httpx.AsyncClient] = None
         self.service_name = self.__class__.__name__
         self.provider_name = settings.provider_name
+        # Expose custom_settings to all services for header generation and custom logic
+        self.custom_settings = custom_settings
         
     async def _ensure_client(self) -> AsyncOpenAI:
         """Ensure the OpenAI client is initialized.
@@ -91,10 +110,13 @@ class BaseService(ABC, TransactionAware):
             # Use HeaderFactory to create provider-specific headers
             # The factory will handle different authentication schemes and metadata
             # based on the PROVIDER_NAME setting (e.g., 'openai', 'custom', 'azure')
+            # ARCHITECTURE NOTE: Pass both settings objects for full configuration access
             headers = HeaderFactory.create_headers(
                 provider_name=settings.provider_name,
                 api_key=settings.provider_api_key,
-                default_headers=settings.provider_headers
+                default_headers=settings.provider_headers,
+                settings=settings,
+                custom_settings=self.custom_settings
             )
             
             if settings.provider_api_type == "openai":

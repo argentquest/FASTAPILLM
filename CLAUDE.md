@@ -115,9 +115,10 @@ Environment variables are used extensively. Key variables:
 - `CUSTOM_VAR` - Custom string variable for provider-specific data
 - All default application settings are also available (timeouts, logging, etc.)
 - Static headers: Use `PROVIDER_HEADERS` environment variable
-- Programmatic headers: Use HeaderFactory.register_header_function()
-  - Header functions can optionally accept (settings, custom_settings) parameters
-  - Full access to all configuration values in header generation
+- Dynamic headers: HeaderFactory automatically adjusts based on provider name
+  - No registration required - provider logic is built into HeaderFactory
+  - Custom provider has full access to settings and custom_settings
+  - Headers are generated fresh for each API client creation
 - See `custom_settings.py`, `header_factory.py`, and `examples_custom_headers.py` for implementation patterns
 
 ## Development Patterns

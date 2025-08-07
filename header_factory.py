@@ -1,9 +1,13 @@
 """
 Header Factory Module
 
-This module provides a factory pattern for creating provider-specific headers
-based on the PROVIDER_NAME configuration. It supports standard OpenAI headers
-and custom header configurations.
+This module provides a simple factory for creating provider-specific headers
+with direct access to settings and custom_settings.
+
+ARCHITECTURE OVERVIEW:
+- Single create_headers method that has access to all settings
+- No registration system - headers are created directly based on provider logic
+- Direct access to both main settings and custom_settings for any provider
 
 Usage:
     from header_factory import HeaderFactory
@@ -16,20 +20,10 @@ Usage:
         settings=settings,
         custom_settings=custom_settings
     )
-    
-    # Or register a custom header function
-    def my_headers(settings, custom_settings):
-        return {
-            "X-App": settings.app_name,
-            "X-Custom": custom_settings.custom_var if custom_settings else None
-        }
-    
-    HeaderFactory.register_header_function("myprovider", my_headers)
 """
 
-from typing import Dict, Optional, Callable, Any, TYPE_CHECKING
+from typing import Dict, Optional, TYPE_CHECKING
 from logging_config import get_logger
-import inspect
 
 # Avoid circular imports
 if TYPE_CHECKING:
@@ -43,82 +37,26 @@ class HeaderFactory:
     """Factory class for creating provider-specific HTTP headers.
     
     ARCHITECTURE OVERVIEW:
-    This factory provides a clean interface for header generation that integrates
-    with both standard and custom provider configurations.
+    This factory provides a simple interface for header generation with
+    direct access to both standard and custom provider configurations.
     
     DESIGN PRINCIPLES:
-    1. Provider Agnostic: Works with any provider name
-    2. Settings Integration: Automatically passes settings to header functions
-    3. Function Signature Detection: Automatically detects what parameters functions expect
-    4. No Circular Dependencies: Uses TYPE_CHECKING imports to avoid circular imports
+    1. Simplicity: Single method with direct logic, no registration system
+    2. Settings Integration: Direct access to settings and custom_settings
+    3. Provider Agnostic: Works with any provider name
+    4. No Circular Dependencies: Uses TYPE_CHECKING imports
     
     HEADER GENERATION FLOW:
     1. Static headers from provider configuration (PROVIDER_HEADERS)
     2. Provider-specific logic (e.g., API key placement)
-    3. Registered dynamic header functions (with settings access)
+    3. Custom provider logic with access to settings and custom_settings
     4. Safe logging (masks sensitive headers)
     
     SUPPORTED PROVIDERS:
-    - OpenAI: Standard OpenAI-compatible headers (AsyncOpenAI handles Authorization)
-    - Custom: Extended headers with CUSTOM_VAR access
-    - Any: Registered functions work with any provider name
+    - OpenAI: Standard OpenAI-compatible headers
+    - Custom: Extended headers with full settings access
+    - Any: Generic provider support
     """
-    
-    # Registry for custom header functions
-    # Functions can accept (settings, custom_settings) parameters or no parameters
-    # The factory automatically detects function signatures and passes appropriate parameters
-    _header_functions: Dict[str, Callable[..., Dict[str, str]]] = {}
-    
-    @classmethod
-    def register_header_function(cls, provider_name: str, func: Callable[..., Dict[str, str]]) -> None:
-        """Register a custom header function for a specific provider.
-        
-        The function can optionally accept parameters:
-        - settings: Main Settings object
-        - custom_settings: CustomProviderSettings object (may be None)
-        
-        Args:
-            provider_name: The provider name to associate with this function
-            func: A callable that returns a dictionary of headers
-            
-        Example (no parameters):
-            def my_custom_headers():
-                return {"X-Custom": "value"}
-            
-        Example (with settings):
-            def my_custom_headers(settings, custom_settings):
-                headers = {"X-App": settings.app_name}
-                if custom_settings and custom_settings.custom_var:
-                    headers["X-Custom-Var"] = custom_settings.custom_var
-                return headers
-            
-            HeaderFactory.register_header_function("mycustom", my_custom_headers)
-        """
-        cls._header_functions[provider_name.lower()] = func
-        logger.info(f"Registered custom header function for provider '{provider_name}'")
-    
-    @classmethod
-    def unregister_header_function(cls, provider_name: str) -> None:
-        """Unregister a custom header function.
-        
-        Args:
-            provider_name: The provider name to unregister
-        """
-        provider_lower = provider_name.lower()
-        if provider_lower in cls._header_functions:
-            del cls._header_functions[provider_lower]
-            logger.info(f"Unregistered custom header function for provider '{provider_name}'")
-    
-    @classmethod
-    def list_registered_functions(cls) -> Dict[str, str]:
-        """List all registered header functions.
-        
-        Returns:
-            Dictionary mapping provider names to function names
-        """
-        return {
-            provider: func.__name__ for provider, func in cls._header_functions.items()
-        }
     
     @staticmethod
     def create_headers(
@@ -128,14 +66,14 @@ class HeaderFactory:
         settings: Optional['Settings'] = None,
         custom_settings: Optional['CustomProviderSettings'] = None
     ) -> Dict[str, str]:
-        """Create headers based on the provider name.
+        """Create headers based on provider name with full settings access.
         
         Args:
-            provider_name: The name of the provider ('openai' or 'custom')
+            provider_name: The name of the provider ('openai', 'custom', etc.)
             api_key: The API key for authentication (optional)
             default_headers: Default headers from configuration (optional)
-            settings: Main Settings object for header functions (optional)
-            custom_settings: CustomProviderSettings object for header functions (optional)
+            settings: Main Settings object with all configuration (optional)
+            custom_settings: CustomProviderSettings object (optional)
             
         Returns:
             Dictionary of headers to use for API requests
@@ -146,50 +84,36 @@ class HeaderFactory:
         # Normalize provider name to lowercase for comparison
         provider_lower = provider_name.lower()
         
-        # Apply provider-specific header logic
+        # Apply provider-specific header logic with full settings access
         if provider_lower == "openai":
-            # Standard OpenAI headers - the AsyncOpenAI client handles Authorization automatically
-            logger.info("Using standard OpenAI headers")
+            # Standard OpenAI headers - AsyncOpenAI client handles Authorization automatically
+            logger.info("Creating standard OpenAI headers")
             
         elif provider_lower == "custom":
-            # Custom provider with specific header requirements
-            headers = HeaderFactory._create_custom_headers(api_key, headers)
+            # Custom provider with access to all settings and custom_settings
+            headers = HeaderFactory._create_custom_headers(api_key, headers, settings, custom_settings)
             
         else:
-            # For any other provider, just use the default headers
-            logger.info(f"Using default headers for provider '{provider_name}'")
+            # Generic provider - can still access settings for custom logic
+            logger.info(f"Creating generic headers for provider '{provider_name}'")
+            if settings:
+                headers.update({
+                    "X-App-Name": settings.app_name,
+                    "X-App-Version": settings.app_version
+                })
+            
+            # Add API key if provided
+            if api_key:
+                headers["X-API-Key"] = api_key
         
-        # Check if there's a registered header function for this provider
-        # ARCHITECTURE NOTE: This is the key integration point between HeaderFactory and settings
-        if provider_lower in HeaderFactory._header_functions:
-            try:
-                func = HeaderFactory._header_functions[provider_lower]
-                
-                # CRITICAL: Dynamic function signature detection
-                # This allows backward compatibility with functions that don't need settings
-                # while providing full settings access to functions that do
-                sig = inspect.signature(func)
-                params = list(sig.parameters.keys())
-                
-                # Call function with appropriate parameters based on signature
-                if len(params) == 0:
-                    # Legacy functions with no parameters (backward compatibility)
-                    dynamic_headers = func()
-                elif len(params) >= 2:
-                    # Modern functions that accept (settings, custom_settings)
-                    # This is the preferred pattern for new header functions
-                    dynamic_headers = func(settings, custom_settings)
-                else:
-                    # Functions that only want the main settings object
-                    dynamic_headers = func(settings)
-                
-                if isinstance(dynamic_headers, dict):
-                    headers.update(dynamic_headers)
-                    logger.info(f"Applied dynamic headers from function '{func.__name__}' for provider '{provider_name}'")
-                else:
-                    logger.warning(f"Header function '{func.__name__}' returned non-dict: {type(dynamic_headers)}")
-            except Exception as e:
-                logger.error(f"Error calling header function for provider '{provider_name}': {e}", exc_info=True)
+        # Add common headers based on settings (if available)
+        if settings:
+            if settings.debug_mode:
+                headers["X-Debug-Mode"] = "true"
+        
+        # Custom settings can override or add to headers for any provider
+        if custom_settings and custom_settings.custom_var:
+            headers["X-Custom-Data"] = custom_settings.custom_var
         
         # Log the headers being used (without sensitive data)
         safe_headers = {k: v if k.lower() not in ['authorization', 'x-api-key', 'api-key', 'x-api-secret'] 
@@ -199,12 +123,19 @@ class HeaderFactory:
         return headers
     
     @staticmethod
-    def _create_custom_headers(api_key: Optional[str], base_headers: Dict[str, str]) -> Dict[str, str]:
-        """Create headers for custom provider.
+    def _create_custom_headers(
+        api_key: Optional[str], 
+        base_headers: Dict[str, str],
+        settings: Optional['Settings'],
+        custom_settings: Optional['CustomProviderSettings']
+    ) -> Dict[str, str]:
+        """Create headers for custom provider with full settings access.
         
-        This method creates basic headers for custom providers. Dynamic headers
-        should be added via HeaderFactory.register_header_function() which are
-        applied automatically in the main create_headers() method.
+        Args:
+            api_key: API key for authentication
+            base_headers: Base headers to start with
+            settings: Main settings object
+            custom_settings: Custom provider settings
         """
         headers = base_headers.copy()
         
@@ -216,10 +147,36 @@ class HeaderFactory:
         headers["X-Provider-Type"] = "custom"
         headers["X-Request-Source"] = "fastapi-llm"
         
+        # Add settings-based headers if available
+        if settings:
+            headers["X-App-Name"] = settings.app_name
+            headers["X-App-Version"] = settings.app_version
+            
+            if settings.debug_mode:
+                headers["X-Debug-Mode"] = "enabled"
+                headers["X-Debug-Level"] = "verbose"
+            
+            # Add timeout info for debugging
+            headers["X-Timeout"] = str(settings.api_timeout)
+        
+        # Add custom provider specific headers
+        if custom_settings:
+            # Access the custom variable
+            if custom_settings.custom_var:
+                headers["X-Custom-Var"] = custom_settings.custom_var
+            
+            # Custom settings has ALL default settings too, so we can access anything
+            headers["X-Provider-Name"] = custom_settings.provider_name
+            
+            # Example: Use custom settings for advanced configuration
+            if custom_settings.rate_limiting_enabled:
+                headers["X-Rate-Limit-Enabled"] = "true"
+        
         # Ensure content type is set
         if "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
         
+        logger.info("Created custom provider headers with settings integration")
         return headers
 
 

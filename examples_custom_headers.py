@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Examples of Programmatic Custom Header Generation
+Examples of How HeaderFactory Adjusts Based on Provider
 
-This file demonstrates how to create custom headers programmatically 
-without relying on .env file configuration.
+This file demonstrates how the simplified HeaderFactory.create_headers()
+method automatically adjusts header generation based on the provider name.
+
+NO REGISTRATION REQUIRED - The factory directly handles different providers
+in its create_headers method based on the provider_name parameter.
 """
 
 import time
@@ -11,286 +14,291 @@ import uuid
 import hashlib
 import json
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Optional
 
-# Import the header factory and custom settings
+# Import the header factory and settings
 from header_factory import HeaderFactory
-from config import custom_settings
+from config import settings, custom_settings
 
 # =============================================================================
-# EXAMPLE 1: Simple Dynamic Headers
+# UNDERSTANDING THE NEW APPROACH
+# =============================================================================
+"""
+The HeaderFactory.create_headers() method automatically adjusts based on provider:
+
+1. OpenAI Provider:
+   - Standard OpenAI-compatible headers
+   - Authorization header handled by AsyncOpenAI client
+   
+2. Custom Provider:
+   - Calls _create_custom_headers() internally
+   - Full access to settings and custom_settings
+   - Adds custom headers based on configuration
+   
+3. Any Other Provider:
+   - Generic header handling
+   - Adds app name, version, API key as needed
+   - Can be extended in HeaderFactory
+"""
+
+# =============================================================================
+# EXAMPLE 1: Testing Different Providers
 # =============================================================================
 
-def simple_dynamic_headers() -> Dict[str, str]:
-    """Generate simple dynamic headers with timestamp and request ID."""
-    return {
-        "X-Request-Timestamp": str(int(time.time())),
-        "X-Request-ID": str(uuid.uuid4()),
-        "X-Client-Version": "1.0.0"
-    }
-
-# =============================================================================
-# EXAMPLE 2: Authentication Token Headers
-# =============================================================================
-
-def auth_token_headers() -> Dict[str, str]:
-    """Generate headers with dynamic authentication tokens."""
-    # Simulate getting a fresh token
-    def get_current_auth_token():
-        # In real implementation, this might:
-        # - Fetch from a token store
-        # - Generate JWT tokens
-        # - Call an auth service
-        # - Read from secure storage
-        return f"token_{int(time.time())}"
+def demonstrate_provider_based_headers():
+    """Show how HeaderFactory automatically adjusts based on provider."""
     
-    return {
-        "X-Auth-Token": get_current_auth_token(),
-        "X-Auth-Type": "Bearer",
-        "X-Token-Timestamp": datetime.utcnow().isoformat() + "Z"
-    }
+    print("="*60)
+    print("DEMONSTRATING PROVIDER-BASED HEADER GENERATION")
+    print("="*60)
+    
+    # Example 1: OpenAI provider
+    print("\n1. OpenAI Provider Headers:")
+    headers = HeaderFactory.create_headers(
+        provider_name="openai",
+        api_key="sk-1234567890",
+        default_headers={"X-Custom": "value"},
+        settings=settings,
+        custom_settings=None
+    )
+    print_headers(headers)
+    
+    # Example 2: Custom provider
+    print("\n2. Custom Provider Headers:")
+    headers = HeaderFactory.create_headers(
+        provider_name="custom",
+        api_key="custom-key-123",
+        default_headers={"X-Base": "custom-base"},
+        settings=settings,
+        custom_settings=custom_settings
+    )
+    print_headers(headers)
+    
+    # Example 3: Generic provider
+    print("\n3. Generic Provider Headers (e.g., 'anthropic'):")
+    headers = HeaderFactory.create_headers(
+        provider_name="anthropic",
+        api_key="ant-key-456",
+        default_headers={"X-Anthropic": "claude"},
+        settings=settings,
+        custom_settings=None
+    )
+    print_headers(headers)
 
 # =============================================================================
-# EXAMPLE 3: Request Signature Headers
+# EXAMPLE 2: Extending HeaderFactory for New Providers
 # =============================================================================
 
-def signature_headers() -> Dict[str, str]:
-    """Generate headers with request signatures for security."""
-    timestamp = str(int(time.time()))
-    nonce = str(uuid.uuid4())
-    
-    # Create signature (example - use your own signing logic)
-    def create_signature(timestamp: str, nonce: str) -> str:
-        data = f"timestamp={timestamp}&nonce={nonce}"
-        secret = "your-secret-key"  # In real code, get from secure storage
-        signature = hashlib.sha256(f"{data}&secret={secret}".encode()).hexdigest()
-        return signature
-    
-    signature = create_signature(timestamp, nonce)
-    
-    return {
-        "X-Timestamp": timestamp,
-        "X-Nonce": nonce,
-        "X-Signature": signature,
-        "X-Signature-Algorithm": "SHA256"
-    }
-
-# =============================================================================
-# EXAMPLE 4: Context-Aware Headers
-# =============================================================================
-
-def context_aware_headers(settings=None, custom_settings=None) -> Dict[str, str]:
-    """Generate headers based on current application context.
-    
-    This function demonstrates how to use the settings parameters
-    that are automatically passed by HeaderFactory.
-    
-    Args:
-        settings: Main Settings object (passed by HeaderFactory)
-        custom_settings: CustomProviderSettings object (passed by HeaderFactory)
+def show_how_to_extend_factory():
     """
+    Demonstrate how you would extend HeaderFactory for new providers.
+    
+    To add support for a new provider, you would modify the 
+    HeaderFactory.create_headers() method directly:
+    
+    elif provider_lower == "anthropic":
+        headers["X-Anthropic-Version"] = "2023-01-01"
+        headers["X-Anthropic-Beta"] = "messages-2023-12-15"
+        if api_key:
+            headers["X-API-Key"] = api_key
+    
+    elif provider_lower == "cohere":
+        headers["Cohere-Version"] = "1"
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+    """
+    
+    print("\n" + "="*60)
+    print("HOW TO EXTEND FOR NEW PROVIDERS")
+    print("="*60)
+    
+    print("""
+To add a new provider, modify header_factory.py:
+
+1. In the create_headers() method, add a new elif block:
+
+    elif provider_lower == "your_provider":
+        # Your provider-specific logic
+        headers["X-YourProvider-Version"] = "1.0"
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        
+        # Access settings if needed
+        if settings and settings.debug_mode:
+            headers["X-Debug"] = "true"
+
+2. No registration needed - it works automatically when 
+   PROVIDER_NAME=your_provider is set in .env
+""")
+
+# =============================================================================
+# EXAMPLE 3: Custom Provider with Dynamic Headers
+# =============================================================================
+
+def demonstrate_custom_provider_features():
+    """Show the full capabilities of the custom provider."""
+    
+    print("\n" + "="*60)
+    print("CUSTOM PROVIDER ADVANCED FEATURES")
+    print("="*60)
+    
+    # Simulate having custom settings
+    class MockCustomSettings:
+        custom_var = "my-custom-data-123"
+        provider_name = "custom"
+        app_name = "Test App"
+        app_version = "2.0.0"
+        debug_mode = True
+        api_timeout = 30
+        rate_limiting_enabled = True
+    
+    mock_custom = MockCustomSettings()
+    
+    # Create headers with full custom settings
+    headers = HeaderFactory.create_headers(
+        provider_name="custom",
+        api_key="custom-api-key",
+        default_headers={
+            "X-Base-Header": "base-value",
+            "Content-Type": "application/json"  # Will not be overridden
+        },
+        settings=settings,
+        custom_settings=mock_custom
+    )
+    
+    print("\nGenerated Custom Headers:")
+    print_headers(headers)
+    
+    print("\nNotice how the custom provider:")
+    print("- Includes the CUSTOM_VAR as X-Custom-Var")
+    print("- Adds debug headers when debug_mode is True")
+    print("- Includes rate limiting info")
+    print("- Preserves existing Content-Type")
+    print("- Has access to ALL settings fields")
+
+# =============================================================================
+# EXAMPLE 4: Real-World Usage in Services
+# =============================================================================
+
+def show_service_usage():
+    """Demonstrate how services use HeaderFactory."""
+    
+    print("\n" + "="*60)
+    print("REAL-WORLD SERVICE USAGE")
+    print("="*60)
+    
+    print("""
+In BaseService, headers are created like this:
+
+    headers = HeaderFactory.create_headers(
+        provider_name=settings.provider_name,      # From PROVIDER_NAME env
+        api_key=settings.provider_api_key,         # From PROVIDER_API_KEY env
+        default_headers=settings.provider_headers, # From PROVIDER_HEADERS env
+        settings=settings,                         # Global settings object
+        custom_settings=self.custom_settings       # Only set if PROVIDER_NAME=custom
+    )
+
+The headers are then passed to the AsyncOpenAI client:
+
+    client = AsyncOpenAI(
+        api_key=settings.provider_api_key,
+        base_url=settings.provider_api_base_url,
+        http_client=self._http_client,
+        default_headers=headers  # <- All requests use these headers
+    )
+""")
+
+# =============================================================================
+# EXAMPLE 5: Dynamic Header Generation Patterns
+# =============================================================================
+
+def dynamic_header_patterns():
+    """Show patterns for dynamic header generation."""
+    
+    print("\n" + "="*60)
+    print("DYNAMIC HEADER PATTERNS")
+    print("="*60)
+    
+    # Pattern 1: Time-based headers
+    print("\n1. Time-based Headers:")
     headers = {
         "X-Request-Time": datetime.utcnow().isoformat() + "Z",
-        "X-Service-Name": "fastapi-llm",
+        "X-Timestamp": str(int(time.time())),
+        "X-Request-ID": str(uuid.uuid4())
     }
+    print_headers(headers)
     
-    # Add settings-based headers if available
-    if settings:
-        headers["X-App-Name"] = settings.app_name
-        headers["X-App-Version"] = settings.app_version
-        if settings.debug_mode:
-            headers["X-Debug-Mode"] = "enabled"
-            headers["X-Debug-Level"] = "verbose"
+    # Pattern 2: Signature-based headers
+    print("\n2. Signature-based Headers:")
+    timestamp = str(int(time.time()))
+    nonce = str(uuid.uuid4())
+    signature = hashlib.sha256(f"{timestamp}:{nonce}:secret".encode()).hexdigest()
     
-    # Add custom provider context if available
-    if custom_settings and custom_settings.custom_var:
-        headers["X-Custom-Data"] = custom_settings.custom_var
+    headers = {
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature
+    }
+    print_headers(headers)
     
-    return headers
+    print("""
+To implement these patterns in HeaderFactory:
+
+1. Modify the _create_custom_headers() method
+2. Or add a new provider-specific block in create_headers()
+3. The headers will be generated fresh for each API client creation
+""")
 
 # =============================================================================
-# EXAMPLE 5: Full Settings Access Example
+# HELPER FUNCTIONS
 # =============================================================================
 
-def settings_based_headers(settings=None, custom_settings=None) -> Dict[str, str]:
-    """Generate headers using full access to settings.
-    
-    This example shows how to leverage all available settings
-    to create comprehensive headers.
-    """
-    headers = {}
-    
-    if settings:
-        # Application info
-        headers["X-App"] = f"{settings.app_name}/{settings.app_version}"
-        
-        # Timeout configuration
-        headers["X-Timeout"] = str(settings.api_timeout)
-        
-        # Rate limiting info
-        if settings.rate_limiting_enabled:
-            headers["X-RateLimit-Enabled"] = "true"
-            headers["X-RateLimit-PerIP"] = str(settings.rate_limit_per_ip)
-        
-        # Retry configuration
-        if settings.retry_enabled:
-            headers["X-Retry-Enabled"] = "true"
-            headers["X-Retry-MaxAttempts"] = str(settings.retry_max_attempts)
-        
-        # Debug information
-        if settings.debug_mode:
-            headers["X-Debug"] = "true"
-            headers["X-Log-Level"] = settings.log_level
-    
-    if custom_settings:
-        # Custom variable
-        if custom_settings.custom_var:
-            headers["X-Custom"] = custom_settings.custom_var
-        
-        # Any other custom settings can be accessed here
-        headers["X-Provider"] = custom_settings.provider_name
-    
-    return headers
+def print_headers(headers: Dict[str, str], mask_sensitive: bool = True):
+    """Pretty print headers, masking sensitive values."""
+    for key, value in headers.items():
+        if mask_sensitive and any(sensitive in key.lower() 
+                                for sensitive in ['key', 'token', 'secret', 'authorization']):
+            print(f"  {key}: ***")
+        else:
+            print(f"  {key}: {value}")
 
 # =============================================================================
-# EXAMPLE 6: API Rate Limiting Headers
+# MAIN EXECUTION
 # =============================================================================
-
-class RateLimitTracker:
-    """Simple rate limit tracker for demonstration."""
-    def __init__(self):
-        self.requests = []
-    
-    def get_rate_limit_headers(self) -> Dict[str, str]:
-        now = time.time()
-        # Clean old requests (last minute)
-        self.requests = [req_time for req_time in self.requests if now - req_time < 60]
-        
-        # Add current request
-        self.requests.append(now)
-        
-        return {
-            "X-RateLimit-Remaining": str(max(0, 100 - len(self.requests))),
-            "X-RateLimit-Reset": str(int(now + 60)),
-            "X-RateLimit-Used": str(len(self.requests))
-        }
-
-# Global rate limiter instance
-rate_limiter = RateLimitTracker()
-
-def rate_limit_headers() -> Dict[str, str]:
-    """Generate rate limiting headers."""
-    return rate_limiter.get_rate_limit_headers()
-
-# =============================================================================
-# USAGE EXAMPLES
-# =============================================================================
-
-def setup_dynamic_headers_example():
-    """Example of how to set up dynamic headers in your application."""
-    
-    print("Setting up dynamic header examples...")
-    
-    # Method 1: Register with HeaderFactory (works for any provider name)
-    HeaderFactory.register_header_function("mycustom", simple_dynamic_headers)
-    HeaderFactory.register_header_function("authprovider", auth_token_headers)
-    HeaderFactory.register_header_function("secure", signature_headers)
-    
-    # Method 2: Register for custom provider (when PROVIDER_NAME=custom)
-    HeaderFactory.register_header_function("custom", context_aware_headers)
-    print("Registered context-aware headers for custom provider")
-    
-    # Or combine multiple header generators
-    def combined_headers():
-        headers = {}
-        headers.update(simple_dynamic_headers())
-        headers.update(rate_limit_headers())
-        return headers
-    
-    HeaderFactory.register_header_function("combined", combined_headers)
-    print("Registered combined headers for 'combined' provider")
-    
-    # List registered functions
-    registered = HeaderFactory.list_registered_functions()
-    print(f"Registered header functions: {registered}")
-
-def test_header_generation():
-    """Test the different header generation methods."""
-    
-    print("\n" + "="*50)
-    print("TESTING DYNAMIC HEADER GENERATION")
-    print("="*50)
-    
-    # Test each header function
-    functions = [
-        ("Simple Dynamic", simple_dynamic_headers),
-        ("Auth Token", auth_token_headers),
-        ("Signature", signature_headers),
-        ("Context Aware", context_aware_headers),
-        ("Rate Limit", rate_limit_headers)
-    ]
-    
-    for name, func in functions:
-        print(f"\n{name} Headers:")
-        try:
-            headers = func()
-            for key, value in headers.items():
-                # Mask sensitive values
-                display_value = "***" if "token" in key.lower() or "secret" in key.lower() else value
-                print(f"  {key}: {display_value}")
-        except Exception as e:
-            print(f"  Error: {e}")
-
-def runtime_header_modification_example():
-    """Example of modifying headers at runtime."""
-    
-    print("\n" + "="*50)
-    print("RUNTIME HEADER MODIFICATION")
-    print("="*50)
-    
-    # Start with simple headers
-    HeaderFactory.register_header_function("runtime", simple_dynamic_headers)
-    print("1. Registered simple headers")
-    headers1 = HeaderFactory.create_headers("runtime", "test-key")
-    print(f"   Generated: {len(headers1)} headers")
-    
-    # Switch to auth headers
-    HeaderFactory.register_header_function("runtime", auth_token_headers)
-    print("2. Switched to auth headers")
-    headers2 = HeaderFactory.create_headers("runtime", "test-key")
-    print(f"   Generated: {len(headers2)} headers")
-    
-    # Clear the function
-    HeaderFactory.unregister_header_function("runtime")
-    print("3. Unregistered header function")
-    headers3 = HeaderFactory.create_headers("runtime", "test-key")
-    print(f"   Generated: {len(headers3)} headers")
 
 if __name__ == "__main__":
-    """Run the examples."""
+    """Run all examples."""
     
-    print("Custom Headers Programming Examples")
+    print("\nHeaderFactory Provider-Based Examples")
+    print("="*40)
+    print("NO REGISTRATION REQUIRED!")
+    print("Headers are generated based on provider_name parameter")
     print("="*40)
     
-    # Set up the examples
-    setup_dynamic_headers_example()
+    # Run all demonstrations
+    demonstrate_provider_based_headers()
+    show_how_to_extend_factory()
+    demonstrate_custom_provider_features()
+    show_service_usage()
+    dynamic_header_patterns()
     
-    # Test header generation
-    test_header_generation()
-    
-    # Test runtime modification
-    runtime_header_modification_example()
-    
-    print(f"\n{'='*50}")
-    print("To use in your application:")
-    print("1. Import: from header_factory import HeaderFactory")
-    print("2. Define your header function")
-    print("3. Register it: HeaderFactory.register_header_function('provider_name', func)")
-    print("4. Set PROVIDER_NAME=provider_name in .env")
-    print("5. Headers will be automatically generated for each request")
-    print("\nFor custom providers:")
-    print("- Set PROVIDER_NAME=custom in .env")
-    print("- Register with HeaderFactory.register_header_function('custom', your_function)")
-    print("- Your function can accept (settings, custom_settings) parameters")
-    print("- Access all settings: settings.app_name, settings.debug_mode, etc.")
-    print("- Access CUSTOM_VAR: custom_settings.custom_var")
+    print("\n" + "="*60)
+    print("KEY TAKEAWAYS:")
+    print("="*60)
+    print("""
+1. No registration system - just call HeaderFactory.create_headers()
+2. Provider name determines header generation logic
+3. Custom provider has full access to settings and custom_settings
+4. To add new providers, modify HeaderFactory directly
+5. Headers are created fresh for each API client
+
+Current supported providers in HeaderFactory:
+- "openai": Standard OpenAI-compatible headers
+- "custom": Extended headers with settings access
+- Any other: Generic headers with app info
+
+To use:
+1. Set PROVIDER_NAME in your .env file
+2. Headers are automatically generated in BaseService
+3. All API calls will include the appropriate headers
+""")

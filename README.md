@@ -171,26 +171,20 @@ docker run -p 8000:8000 --env-file .env ai-story-generator
 All configuration is done via environment variables. See `.env.example` for available options:
 
 ### Provider Configuration
-- `LLM_PROVIDER`: Choose "azure", "openrouter", or "custom" (required)
+- `PROVIDER_NAME`: Provider identifier (e.g., "openai", "openrouter", "custom")
+- `PROVIDER_API_KEY`: Your API key for authentication
+- `PROVIDER_API_BASE_URL`: Base URL for API calls (must be OpenAI-compatible)
+- `PROVIDER_MODEL`: Model identifier (e.g., 'gpt-4', 'llama2')
+- `PROVIDER_API_TYPE`: API compatibility type (default: "openai")
+- `PROVIDER_HEADERS`: Additional HTTP headers as JSON (optional)
 
-### Azure OpenAI (if using Azure)
-- `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key
-- `AZURE_OPENAI_ENDPOINT`: Your Azure OpenAI endpoint
-- `AZURE_OPENAI_DEPLOYMENT_NAME`: Your deployment name
-
-### OpenRouter (if using OpenRouter)
-- `OPENROUTER_API_KEY`: Your OpenRouter API key
-- `OPENROUTER_MODEL`: Model to use (default: openai/gpt-4-turbo-preview)
-- `OPENROUTER_SITE_URL`: Your site URL for analytics (optional)
-- `OPENROUTER_APP_NAME`: Your app name for analytics (optional)
-
-### Custom Provider (if using Custom)
-- `CUSTOM_API_KEY`: Your API key
-- `CUSTOM_API_BASE_URL`: Base URL for the API (must be OpenAI-compatible)
-- `CUSTOM_MODEL`: Model name to use
-- `CUSTOM_PROVIDER_NAME`: Display name for the provider (default: Custom LLM)
-- `CUSTOM_API_TYPE`: API type, currently only "openai" supported (default: openai)
-- `CUSTOM_HEADERS`: Additional headers as JSON (optional)
+### Custom Provider Settings (when PROVIDER_NAME=custom)
+- `CUSTOM_VAR`: Custom string variable for provider-specific data
+- Headers are automatically generated based on provider type:
+  - OpenAI providers: Standard OpenAI-compatible headers
+  - Custom providers: Extended headers with full settings access
+  - Other providers: Generic headers with app metadata
+- See `examples_custom_headers.py` for header generation patterns
 
 ### Application Settings
 - `DEBUG_MODE`: Enable debug logging and docs (default: false)
