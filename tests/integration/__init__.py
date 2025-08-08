@@ -1,0 +1,1 @@
+"""Integration tests - Service integration with mocked external dependencies."""

@@ -66,9 +66,6 @@ import time
 from datetime import datetime
 import uuid
 
-# Add parent directory to path to import existing modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from logging_config import get_logger
 from transaction_context import transaction_context, get_current_transaction_guid
 from retry_utils import retry_all_errors, retry_api_calls, retry_database_ops

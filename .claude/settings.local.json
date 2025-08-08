@@ -27,7 +27,9 @@
       "Bash(pytest:*)",
       "Bash(sed:*)",
       "Bash(npm install)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(true)",
+      "Bash(uv add:*)"
     ],
     "deny": []
   }

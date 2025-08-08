@@ -14,20 +14,37 @@ FASTAPILLM is a FastAPI-based AI content generation platform that supports multi
 - ✅ **Custom Provider Support**: Extended configuration system for custom providers
 - ✅ **Header Factory**: Dynamic header generation based on provider type
 - ✅ **Async Service Layer**: Fully async-compatible base service implementation
+- ✅ **Improved Service Architecture**: Separated BaseAIService from ContentGenerationService for better flexibility
 
 ## Essential Commands
 
 ```bash
-# Development
-python backend/main.py            # Run the FastAPI application locally
-python backend/mcp_server.py      # Run the standalone MCP server
-pip install -r requirements.txt   # Install dependencies
+# Development with UV (recommended - faster package management)
+uv venv --python 3.11               # Create UV virtual environment
+source .venv/Scripts/activate       # Activate environment (Windows)
+uv pip install -e ".[dev,test]"     # Install all dependencies in dev mode
+cd backend && python main.py        # Run the FastAPI application locally
+cd backend && python mcp_server.py  # Run the standalone MCP server
+
+# UV Package Management Commands
+uv add <package>                     # Add a new package 
+uv remove <package>                  # Remove a package
+uv lock                              # Generate/update lock file
+uv sync                              # Install from lock file
+uv pip list                          # List installed packages
+
+# Development (with pip - traditional, slower)
+pip install -r requirements.txt     # Install dependencies
+cd backend && python main.py        # Run the FastAPI application locally
 
 # MCP Server (FastMCP CLI)
 fastmcp run backend.mcp_server:mcp  # Run MCP server with FastMCP CLI
 
-# Testing (All tests now in test/ directory)
+# Testing (Comprehensive pytest test suite - 84 tests)
 pytest                               # Run all tests
+pytest tests/unit                    # Run unit tests only
+pytest -m "not slow"                 # Skip slow tests
+pytest tests/unit -v                 # Verbose unit test output
 python test/test_mcp_client.py       # Enhanced MCP object extraction
 python test/test_mcp_working.py      # Basic MCP functionality test
 python test/test_enhanced_logging.py # Logging system verification
@@ -48,21 +65,41 @@ alembic revision --autogenerate -m "description"  # Create new migration
 
 ## Architecture
 
+### Configuration Access
+Settings and custom_settings are globally accessible throughout the application:
+```python
+# From within backend directory
+from app_config import settings, custom_settings
+
+# From root or other directories  
+from backend.app_config import settings, custom_settings
+
+# Alternative: Direct import from config
+from backend.config import settings, custom_settings
+
+# Usage
+if settings.debug_mode:
+    print(f"Running {settings.app_name} in debug mode")
+
+if custom_settings and custom_settings.custom_var:
+    print(f"Custom var: {custom_settings.custom_var}")
+```
+
 ### Service Layer Structure
 The application uses a multi-framework approach with parallel implementations:
-- `/services/chat_services/` - Chat implementations for each framework
-- `/services/story_services/` - Story generation implementations for each framework
+- `/backend/services/chat_services/` - Chat implementations for each framework
+- `/backend/services/story_services/` - Story generation implementations for each framework
 - Each service follows the pattern: `{framework}_service.py` (e.g., `langchain_service.py`)
 
 ### Routing Pattern
-Routes are organized by feature in `/routes/`:
+Routes are organized by feature in `/backend/routes/`:
 - `story_routes.py` - Story generation endpoints
 - `chat_routes.py` - Chat endpoints
 - `logging_routes.py` - Logging viewer endpoints
 - `cost_routes.py` - Cost tracking endpoints
 
 ### External Prompts
-Prompts are externalized in `/prompts/{framework}/` directories as text files, loaded dynamically by services.
+Prompts are externalized in `/backend/prompts/{framework}/` directories as text files, loaded dynamically by services.
 
 ### Database
 - SQLAlchemy ORM with Alembic migrations
@@ -115,11 +152,11 @@ Environment variables are used extensively. Key variables:
 - `CUSTOM_VAR` - Custom string variable for provider-specific data
 - All default application settings are also available (timeouts, logging, etc.)
 - Static headers: Use `PROVIDER_HEADERS` environment variable
-- Dynamic headers: HeaderFactory automatically adjusts based on provider name
-  - No registration required - provider logic is built into HeaderFactory
-  - Custom provider has full access to settings and custom_settings
-  - Headers are generated fresh for each API client creation
-- See `custom_settings.py`, `header_factory.py`, and `examples_custom_headers.py` for implementation patterns
+- Dynamic headers: Automatically generated based on provider name
+  - OpenRouter: Empty headers (auth handled by AsyncOpenAI client)
+  - Custom: Extended headers with app info, debug flags, and CUSTOM_VAR
+  - Other providers: Minimal headers with app identification
+- See `custom_settings.py` and `services/base_ai_service.py` for implementation details
 
 ## Development Patterns
 

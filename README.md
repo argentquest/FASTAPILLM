@@ -5,6 +5,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)](https://fastapi.tiangolo.com/)
 [![MCP Server](https://img.shields.io/badge/MCP-Server-blue.svg)](https://modelcontextprotocol.io)
 [![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)
+[![UV](https://img.shields.io/badge/UV-Package%20Manager-ff6b35.svg)](https://github.com/astral-sh/uv)
 
 A modern, enterprise-grade AI content generation platform featuring multi-framework support, MCP (Model Context Protocol) integration, comprehensive cost tracking, and full-stack web interface. Built with FastAPI, React, and designed for production deployment.
 
@@ -49,12 +50,14 @@ A modern, enterprise-grade AI content generation platform featuring multi-framew
   - Story preview and full view modes
 
 ### Production-Ready Infrastructure
+- **Modern Package Management**: UV for 10-100x faster dependency installation and resolution
 - **Structured Logging**: JSON-formatted logs with request tracking and performance metrics
 - **Web-based Log Viewer**: Real-time log monitoring with filtering and search
 - **Database Flexibility**: SQLite for development, PostgreSQL-ready for production
 - **Docker Support**: Multi-stage builds with separate frontend/backend containers
 - **Health Monitoring**: Comprehensive health checks and error tracking
 - **Security**: Input validation, CORS configuration, rate limiting, secure API key management
+- **Comprehensive Testing**: 84 passing tests with full pytest integration
 
 ## Architecture Improvements
 
@@ -79,11 +82,13 @@ A modern, enterprise-grade AI content generation platform featuring multi-framew
 ## Requirements
 
 ### Backend
+- **UV Package Manager** (primary) or pip (fallback support)
 - Python 3.11+ (recommended)
 - FastAPI 0.109.0+
 - Pydantic V2 (2.5.3+)
 - SQLAlchemy with Alembic for database migrations
 - FastMCP for Model Context Protocol integration
+- 164+ packages automatically managed by UV
 
 ### Frontend (React - Optional)
 - Node.js 18+
@@ -133,9 +138,40 @@ PROVIDER_NAME=Tachyon LLM
 ```
 
 4. Install dependencies:
+
+#### Using UV (Primary Method - Fast & Modern)
 ```bash
+# UV is now the primary package manager for this project
+
+# Create virtual environment with Python 3.11
+uv venv --python 3.11
+
+# Activate the environment
+source .venv/Scripts/activate  # Windows
+# OR
+source .venv/bin/activate  # macOS/Linux
+
+# Install all dependencies (main + dev + test)
+uv pip install -e ".[dev,test]"
+
+# Generate lock file for reproducible builds
+uv lock
+```
+
+#### Using pip (Legacy Support)
+```bash
+# Traditional method (slower)
 pip install -r requirements.txt
 ```
+
+**Why UV?**
+- ⚡ 10-100x faster than pip
+- 🔒 Better dependency resolution
+- 📦 Built-in virtual environment management
+- 🔄 Reproducible builds with lock files
+- 🚀 Modern Python package management
+
+See [UV_SETUP.md](UV_SETUP.md) for detailed UV usage instructions.
 
 5. Run the application:
 ```bash
@@ -181,10 +217,10 @@ All configuration is done via environment variables. See `.env.example` for avai
 ### Custom Provider Settings (when PROVIDER_NAME=custom)
 - `CUSTOM_VAR`: Custom string variable for provider-specific data
 - Headers are automatically generated based on provider type:
-  - OpenAI providers: Standard OpenAI-compatible headers
-  - Custom providers: Extended headers with full settings access
-  - Other providers: Generic headers with app metadata
-- See `examples_custom_headers.py` for header generation patterns
+  - OpenRouter: Empty headers (auth handled by AsyncOpenAI client)
+  - Custom: Extended headers with app info, debug flags, and CUSTOM_VAR
+  - Other providers: Minimal headers with app identification
+- See `services/base_ai_service.py` for implementation details
 
 ### Application Settings
 - `DEBUG_MODE`: Enable debug logging and docs (default: false)

@@ -1,0 +1,521 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.8.2"
+
+jobs:
+  # Job 1: Code quality and static analysis
+  code-quality:
+    runs-on: ubuntu-latest
+    name: Code Quality & Static Analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff black isort mypy
+        pip install -r requirements.txt
+    
+    - name: Run Black (code formatting check)
+      run: black --check --diff backend/ tests/
+      continue-on-error: false
+    
+    - name: Run isort (import sorting check)
+      run: isort --check-only --diff backend/ tests/
+      continue-on-error: false
+    
+    - name: Run Ruff (linting)
+      run: ruff check backend/ tests/
+      continue-on-error: false
+    
+    - name: Run MyPy (type checking)
+      run: mypy backend/
+      continue-on-error: true  # Type checking failures are warnings, not blockers
+
+  # Job 2: Unit tests
+  unit-tests:
+    runs-on: ubuntu-latest
+    name: Unit Tests
+    
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio pytest-mock pytest-cov
+        pip install -r requirements.txt
+    
+    - name: Run unit tests
+      run: |
+        cd tests
+        python -m pytest unit/ -v --tb=short --disable-warnings
+        echo "UNIT_TEST_RESULT=$?" >> $GITHUB_ENV
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        REAL_AI_TESTS: "0"
+        TEST_DATABASE_URL: "sqlite:///test_unit.db"
+    
+    - name: Upload unit test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: unit-test-results-py${{ matrix.python-version }}
+        path: tests/test-results/
+
+  # Job 3: Integration tests  
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    needs: unit-tests
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio pytest-mock
+        pip install psycopg2-binary  # For PostgreSQL support
+        pip install -r requirements.txt
+    
+    - name: Run database migrations
+      run: |
+        cd backend
+        alembic upgrade head
+      env:
+        DATABASE_URL: "postgresql://testuser:testpass@localhost:5432/testdb"
+    
+    - name: Run integration tests
+      run: |
+        cd tests
+        python -m pytest integration/ -v --tb=short --disable-warnings
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        DATABASE_URL: "postgresql://testuser:testpass@localhost:5432/testdb"
+        REAL_AI_TESTS: "0"
+        PROVIDER_NAME: "test"
+        PROVIDER_API_KEY: "test-key"
+        PROVIDER_API_BASE_URL: "https://test.api.com/v1"
+    
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: integration-test-results
+        path: tests/test-results/
+
+  # Job 4: API tests
+  api-tests:
+    runs-on: ubuntu-latest
+    name: API Tests
+    needs: unit-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio pytest-mock
+        pip install httpx  # For API testing
+        pip install -r requirements.txt
+    
+    - name: Start FastAPI server in background
+      run: |
+        cd backend
+        python main.py &
+        echo $! > ../server.pid
+        sleep 10  # Wait for server to start
+      env:
+        DATABASE_URL: "sqlite:///test_api.db"
+        PROVIDER_NAME: "test"
+        PROVIDER_API_KEY: "test-key"
+        PROVIDER_API_BASE_URL: "https://test.api.com/v1"
+    
+    - name: Run API tests
+      run: |
+        cd tests
+        python -m pytest api/ -v --tb=short --disable-warnings
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        TEST_API_BASE_URL: "http://localhost:8000"
+        REAL_AI_TESTS: "0"
+    
+    - name: Stop FastAPI server
+      run: |
+        if [ -f server.pid ]; then
+          kill $(cat server.pid) || true
+          rm server.pid
+        fi
+      if: always()
+    
+    - name: Upload API test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: api-test-results
+        path: tests/test-results/
+
+  # Job 5: End-to-end tests (only on main branch or manual trigger)
+  e2e-tests:
+    runs-on: ubuntu-latest
+    name: End-to-End Tests
+    needs: [integration-tests, api-tests]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: e2epass
+          POSTGRES_USER: e2euser
+          POSTGRES_DB: e2edb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio pytest-mock
+        pip install psycopg2-binary
+        pip install -r requirements.txt
+    
+    - name: Setup test database
+      run: |
+        cd backend
+        alembic upgrade head
+      env:
+        DATABASE_URL: "postgresql://e2euser:e2epass@localhost:5432/e2edb"
+    
+    - name: Start application services
+      run: |
+        # Start FastAPI server
+        cd backend
+        python main.py &
+        echo $! > ../fastapi.pid
+        
+        # Start MCP server (if applicable)
+        python mcp_server.py &
+        echo $! > ../mcp.pid
+        
+        sleep 15  # Wait for services to be ready
+      env:
+        DATABASE_URL: "postgresql://e2euser:e2epass@localhost:5432/e2edb"
+        PROVIDER_NAME: "test"
+        PROVIDER_API_KEY: "test-key"
+        PROVIDER_API_BASE_URL: "https://test.api.com/v1"
+        LOG_LEVEL: "INFO"
+    
+    - name: Run E2E tests
+      run: |
+        cd tests
+        python -m pytest e2e/ -v --tb=short --disable-warnings --maxfail=5
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        DATABASE_URL: "postgresql://e2euser:e2epass@localhost:5432/e2edb"
+        TEST_API_BASE_URL: "http://localhost:8000"
+        REAL_AI_TESTS: "0"
+    
+    - name: Stop application services
+      run: |
+        if [ -f fastapi.pid ]; then
+          kill $(cat fastapi.pid) || true
+          rm fastapi.pid
+        fi
+        if [ -f mcp.pid ]; then
+          kill $(cat mcp.pid) || true
+          rm mcp.pid
+        fi
+      if: always()
+    
+    - name: Upload E2E test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: e2e-test-results
+        path: tests/test-results/
+
+  # Job 6: Test with real AI APIs (manual trigger only, with API keys)
+  real-ai-tests:
+    runs-on: ubuntu-latest
+    name: Real AI API Tests
+    if: github.event_name == 'workflow_dispatch'
+    needs: unit-tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio pytest-mock
+        pip install -r requirements.txt
+    
+    - name: Run tests with real AI APIs
+      run: |
+        cd tests
+        python -m pytest unit/services/ -m "ai_real" -v --tb=short --disable-warnings
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        REAL_AI_TESTS: "1"
+        PROVIDER_NAME: ${{ secrets.AI_PROVIDER_NAME }}
+        PROVIDER_API_KEY: ${{ secrets.AI_PROVIDER_API_KEY }}
+        PROVIDER_API_BASE_URL: ${{ secrets.AI_PROVIDER_BASE_URL }}
+        PROVIDER_MODEL: ${{ secrets.AI_PROVIDER_MODEL }}
+      continue-on-error: true  # Don't fail CI if AI APIs are unavailable
+    
+    - name: Upload real AI test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: real-ai-test-results
+        path: tests/test-results/
+
+  # Job 7: Test coverage report (combines all test results)
+  coverage-report:
+    runs-on: ubuntu-latest
+    name: Coverage Report
+    needs: [unit-tests, integration-tests, api-tests]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov coverage
+        pip install -r requirements.txt
+    
+    - name: Run tests with coverage
+      run: |
+        cd tests
+        python -m pytest unit/ integration/ api/ --cov=../backend --cov-report=xml --cov-report=html --disable-warnings
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        REAL_AI_TESTS: "0"
+        DATABASE_URL: "sqlite:///test_coverage.db"
+      continue-on-error: true
+    
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: |
+          tests/coverage.xml
+          tests/htmlcov/
+    
+    - name: Upload coverage to Codecov (if token available)
+      uses: codecov/codecov-action@v3
+      if: env.CODECOV_TOKEN != ''
+      with:
+        file: tests/coverage.xml
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Job 8: Performance tests (only on main branch)
+  performance-tests:
+    runs-on: ubuntu-latest
+    name: Performance Tests
+    needs: api-tests
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-asyncio pytest-mock pytest-benchmark
+        pip install -r requirements.txt
+    
+    - name: Run performance tests
+      run: |
+        cd tests
+        python -m pytest unit/ integration/ -m "slow" --benchmark-only --benchmark-json=benchmark.json --disable-warnings
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        REAL_AI_TESTS: "0"
+        DATABASE_URL: "sqlite:///test_perf.db"
+      continue-on-error: true
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: tests/benchmark.json
+
+  # Job 9: Security scan
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scan
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit semgrep
+    
+    - name: Run Safety (dependency vulnerability check)
+      run: safety check --json --output safety-report.json
+      continue-on-error: true
+    
+    - name: Run Bandit (security linting)
+      run: bandit -r backend/ -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Run Semgrep (security analysis)
+      run: |
+        semgrep --config=auto backend/ --json --output=semgrep-report.json
+      continue-on-error: true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          safety-report.json
+          bandit-report.json
+          semgrep-report.json
+
+  # Final job: Test summary
+  test-summary:
+    runs-on: ubuntu-latest
+    name: Test Summary
+    needs: [code-quality, unit-tests, integration-tests, api-tests]
+    if: always()
+    
+    steps:
+    - name: Download all test results
+      uses: actions/download-artifact@v3
+    
+    - name: Generate test summary
+      run: |
+        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### Job Status" >> $GITHUB_STEP_SUMMARY
+        echo "- Code Quality: ${{ needs.code-quality.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- API Tests: ${{ needs.api-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Test Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "Check the 'Artifacts' section below for detailed test reports, coverage data, and performance metrics." >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.code-quality.result }}" = "failure" ] || \
+           [ "${{ needs.unit-tests.result }}" = "failure" ] || \
+           [ "${{ needs.integration-tests.result }}" = "failure" ] || \
+           [ "${{ needs.api-tests.result }}" = "failure" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Some tests failed. Please review the individual job logs for details.**" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **All core tests passed successfully!**" >> $GITHUB_STEP_SUMMARY
+        fi

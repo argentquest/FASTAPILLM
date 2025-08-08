@@ -1,5 +1,13 @@
 {
   "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "packageName",
+      "description": "Package name to add with UV",
+      "default": "requests",
+      "type": "promptString"
+    }
+  ],
   "tasks": [
     {
       "label": "echo",
@@ -13,6 +21,31 @@
         "panel": "shared",
         "showReuseMessage": true,
         "clear": false
+      }
+    },
+    {
+      "label": "Wait for Process Cleanup",
+      "type": "shell",
+      "command": "timeout",
+      "args": ["2"],
+      "windows": {
+        "command": "timeout",
+        "args": ["/t", "2", "/nobreak"]
+      },
+      "linux": {
+        "command": "sleep",
+        "args": ["2"]
+      },
+      "osx": {
+        "command": "sleep", 
+        "args": ["2"]
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
       }
     },
     {
@@ -208,10 +241,10 @@
       "label": "Kill Python Processes",
       "type": "shell",
       "command": "taskkill",
-      "args": ["/F", "/IM", "python.exe"],
+      "args": ["/F", "/IM", "python.exe", "/T"],
       "windows": {
         "command": "taskkill",
-        "args": ["/F", "/IM", "python.exe"]
+        "args": ["/F", "/IM", "python.exe", "/T"]
       },
       "linux": {
         "command": "pkill",
@@ -222,10 +255,11 @@
         "args": ["-f", "python"]
       },
       "presentation": {
-        "echo": true,
-        "reveal": "always",
+        "echo": false,
+        "reveal": "silent",
         "focus": false,
-        "panel": "shared"
+        "panel": "shared",
+        "showReuseMessage": false
       }
     },
     {
@@ -261,6 +295,307 @@
         "reveal": "always",
         "focus": false,
         "panel": "shared"
+      }
+    },
+    {
+      "label": "UV: Add Package",
+      "type": "shell",
+      "command": "uv",
+      "args": ["add", "${input:packageName}"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "uv",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "UV: Sync Dependencies",
+      "type": "shell", 
+      "command": "uv",
+      "args": ["pip", "install", "-e", ".[dev,test]"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "uv",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "UV: Update Lock File",
+      "type": "shell",
+      "command": "uv", 
+      "args": ["lock"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "uv",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Tests: Run All (UV)",
+      "dependsOn": ["Kill Python Processes", "Wait for Process Cleanup"],
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "-v", "-s", "--disable-warnings"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Run Unit Tests Only",
+      "dependsOn": "Kill Python Processes",
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "tests/unit", "-v", "-s", "--disable-warnings"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Run Quick (No Slow Tests)",
+      "dependsOn": "Kill Python Processes",
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "-m", "not slow", "-v", "-s", "--disable-warnings"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Run with Coverage",
+      "dependsOn": "Kill Python Processes",
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "--cov=backend", "--cov-report=html", "--cov-report=term-missing", "-v", "-s", "--disable-warnings"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Run API Tests",
+      "dependsOn": "Kill Python Processes",
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "tests/api", "-v", "-s", "--disable-warnings"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Run Integration Tests",
+      "dependsOn": "Kill Python Processes",
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "tests/integration", "-v", "-s", "--disable-warnings"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Run E2E Tests",
+      "dependsOn": "Kill Python Processes",
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "tests/e2e", "-v", "-s", "--disable-warnings"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Run MCP Tests (Legacy)",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["test/test_mcp_client.py"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Watch Mode (Auto-rerun)",
+      "type": "shell",
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "pytest", "tests/unit", "-v", "--tb=short", "-f"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "Tests: Clean Run All",
+      "dependsOn": ["Kill Python Processes", "Wait for Process Cleanup"],
+      "dependsOrder": "sequence",
+      "type": "shell",
+      "command": "cmd",
+      "args": ["/c", "cd /d \"${workspaceFolder}\" && .venv\\Scripts\\python.exe -m pytest -v -s --disable-warnings --tb=short"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true,
+        "group": "tests"
       }
     }
   ]

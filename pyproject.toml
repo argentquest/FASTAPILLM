@@ -1,0 +1,211 @@
+[project]
+name = "fastapillm"
+version = "1.0.0"
+description = "FastAPI-based AI content generation platform with multi-framework support"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "FASTAPILLM Team", email = "admin@example.com"},
+]
+keywords = ["ai", "llm", "fastapi", "langchain", "semantic-kernel", "mcp"]
+
+dependencies = [
+    "fastapi>=0.109.0",
+    "python-dotenv>=1.0.0",
+    "openai>=1.0.0",
+    "semantic-kernel>=0.9.0",
+    "langchain>=0.1.0",
+    "langchain-openai>=0.0.5",
+    "langgraph>=0.0.20",
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    "python-multipart>=0.0.6",
+    "uvicorn>=0.25.0",
+    "httpx>=0.25.2",
+    "structlog>=24.1.0",
+    "sqlalchemy>=2.0.23",
+    "alembic>=1.13.0",
+    "jinja2>=3.1.2",
+    "fastmcp>=0.1.0",
+    "mcp>=0.1.0",
+    "slowapi>=0.1.9",
+    "tenacity>=8.2.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "pytest-cov>=4.1.0",
+    "black>=23.12.0",
+    "ruff>=0.1.8",
+    "mypy>=1.7.1",
+    "pre-commit>=3.6.0",
+]
+
+test = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/fastapillm"
+Documentation = "https://github.com/yourusername/fastapillm#readme"
+Repository = "https://github.com/yourusername/fastapillm"
+Issues = "https://github.com/yourusername/fastapillm/issues"
+
+[project.scripts]
+fastapillm = "backend.main:main"
+fastapillm-mcp = "backend.mcp_server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend", "services", "routes", "schemas", "prompts"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.3",
+    "pytest-asyncio>=0.21.1",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black>=23.12.0",
+    "ruff>=0.1.8",
+    "mypy>=1.7.1",
+    "pre-commit>=3.6.0",
+    "ipython>=8.18.0",
+]
+
+[tool.uv.sources]
+# You can specify custom sources for packages if needed
+# Example:
+# my-package = { git = "https://github.com/user/repo.git", branch = "main" }
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "W191",  # indentation contains tabs
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # imported but unused
+"test_*.py" = ["ARG001", "ARG002"]  # unused arguments in tests
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | frontendReact
+)/
+'''
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "--strict-markers",
+    "--asyncio-mode=auto"
+]
+testpaths = ["test", "tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+markers = [
+    "unit: Fast isolated unit tests",
+    "integration: Service integration tests", 
+    "api: FastAPI endpoint tests",
+    "database: Database and ORM tests",
+    "e2e: End-to-end workflow tests",
+    "slow: Slow-running tests (deselect with '-m \"not slow\"')",
+    "ai_real: Tests that use real AI APIs (when REAL_AI_TESTS=1)",
+    "openrouter: Tests specific to OpenRouter provider",
+    "custom_provider: Tests specific to custom providers",
+    "mcp: MCP server tests"
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "fastmcp.*",
+    "mcp.*",
+    "semantic_kernel.*",
+    "langchain.*",
+    "langgraph.*",
+    "slowapi.*",
+    "tenacity.*",
+]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["backend", "services", "routes"]
+omit = [
+    "*/tests/*",
+    "*/test/*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["backend", "services", "routes", "schemas"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+import_heading_stdlib = "Standard library imports"
+import_heading_thirdparty = "Third-party imports"
+import_heading_firstparty = "First-party imports"
+import_heading_localfolder = "Local imports"

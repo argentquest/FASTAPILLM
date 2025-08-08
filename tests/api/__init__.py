@@ -1,0 +1,1 @@
+"""API tests - FastAPI endpoint tests with test client."""

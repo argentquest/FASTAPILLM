@@ -6,11 +6,11 @@ This example demonstrates how to access custom_settings in service classes
 that inherit from BaseService.
 """
 
-from services.base_service import BaseService
-from config import settings
+from backend.services.content_generation_service import ContentGenerationService
+from backend.config import settings
 from typing import Dict, Any, Tuple
 
-class ExampleService(BaseService):
+class ExampleService(ContentGenerationService):
     """Example service showing custom_settings usage."""
     
     async def generate_content(self, primary_input: str, secondary_input: str) -> Tuple[str, Dict[str, Any]]:

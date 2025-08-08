@@ -8,12 +8,35 @@ python check-setup.py
 ```
 This will tell you exactly what you need to install.
 
-## 🚀 Running FASTAPILLM
+## ⚡ Quick Development Setup (UV)
 
-You now have a modern React frontend with the backend. Here's how to run them:
+**This project now uses UV for faster package management:**
+
+```bash
+# 1. Activate UV environment
+source .venv/Scripts/activate  # Windows
+# OR
+source .venv/bin/activate  # macOS/Linux
+
+# 2. Run the application
+python backend/main.py
+
+# Access at: http://localhost:8000
+# MCP endpoint: http://localhost:8000/mcp
+```
+
+**Need to install dependencies?**
+```bash
+uv pip install -e ".[dev,test]"  # Install all dependencies (fast!)
+```
+
+## 🚀 Running FASTAPILLM
 
 ### Option 1: Backend Only (Recommended)
 ```bash
+# Ensure UV environment is active
+source .venv/Scripts/activate
+
 # Run the backend application with embedded MCP server
 python backend/main.py
 

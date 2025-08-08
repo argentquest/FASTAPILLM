@@ -11,9 +11,6 @@ import os
 import platform
 from datetime import datetime
 
-# Add parent directory to path to import existing modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from config import settings
 from logging_config import configure_logging, get_logger
 
