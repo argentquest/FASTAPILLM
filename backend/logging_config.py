@@ -9,7 +9,11 @@ import sys
 from datetime import datetime
 
 # Import transaction context functions
-from transaction_context import get_current_transaction_guid
+try:
+    from .transaction_context import get_current_transaction_guid
+except ImportError:
+    # Fallback for when module is run directly
+    from transaction_context import get_current_transaction_guid
 
 
 class PlainTextFormatter(logging.Formatter):

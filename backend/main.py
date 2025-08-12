@@ -11,6 +11,17 @@ import os
 import platform
 from datetime import datetime
 
+# Ensure backend directory is in path for all imports
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+# Also add parent directory for imports like simple_rate_limiting
+parent_dir = os.path.dirname(backend_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Now import with confidence
 from config import settings
 from logging_config import configure_logging, get_logger
 
@@ -54,8 +65,7 @@ except Exception as e:
 from middleware import LoggingMiddleware, ErrorHandlingMiddleware
 from database import init_db
 
-# Import rate limiting middleware (from parent directory)
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Import rate limiting middleware (from parent directory - already added to path above)
 # Temporarily use simple middleware for testing
 from simple_rate_limiting import SimpleRateLimitingMiddleware as RateLimitingMiddleware
 
