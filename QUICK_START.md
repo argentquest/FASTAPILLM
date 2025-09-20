@@ -61,14 +61,21 @@ npm run dev
 # - MCP Server: http://localhost:8000/mcp
 ```
 
-### Option 3: Docker Deployment
+### Option 3: Docker Deployment (Production Ready)
 ```bash
 # Run with Docker (React frontend + backend)
-docker-compose -f docker-compose.separated.yml up --build
+docker-compose up --build
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs ai-content-platform  # Backend
+docker-compose logs react-frontend       # Frontend
 
 # Access:
 # - Backend API: http://localhost:8000
-# - React Frontend: http://localhost:3001
+# - React Frontend: http://localhost:3000
 # - MCP Server: http://localhost:8000/mcp
 ```
 
@@ -88,16 +95,20 @@ docker-compose -f docker-compose.separated.yml up --build
 2. Select "Backend" and click play
 3. Manually start your preferred frontend
 
-## 🐳 Docker Option
+## 🐳 Docker Option (Updated)
 
 ```bash
 # Run all services with Docker
-docker-compose -f docker-compose.separated.yml up --build
+docker-compose up --build
+
+# Stop and clean up
+docker-compose down --volumes
 
 # Access:
 # - Backend: http://localhost:8000
-# - React Frontend: http://localhost:3001
+# - React Frontend: http://localhost:3000 
 # - MCP Server: http://localhost:8000/mcp
+# - API Docs: http://localhost:8000/docs
 ```
 
 ## ❗ Important Notes

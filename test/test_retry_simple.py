@@ -5,9 +5,9 @@ import time
 import sys
 import os
 
-# Add project root to path
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(root_dir)
+# Add backend directory to path
+backend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend')
+sys.path.append(backend_dir)
 
 from retry_utils import retry_api_calls, get_retry_stats
 import httpx

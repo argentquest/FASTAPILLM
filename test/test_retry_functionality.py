@@ -11,9 +11,9 @@ from unittest.mock import patch, AsyncMock
 import sys
 import os
 
-# Add project root to path
-root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(root_dir)
+# Add backend directory to path
+backend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend')
+sys.path.append(backend_dir)
 
 from retry_utils import (
     retry_api_calls, 
@@ -22,7 +22,7 @@ from retry_utils import (
     get_retry_stats,
     is_retryable_error
 )
-from config import settings
+from app_config import settings
 from logging_config import get_logger
 import httpx
 import openai

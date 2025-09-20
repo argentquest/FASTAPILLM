@@ -270,6 +270,10 @@ def mock_ai_services_for_unit_tests(request, mock_openai_client):
         yield
 
 
+# Import API client fixtures
+pytest_plugins = ["tests.fixtures.api_client"]
+
+
 # Cleanup fixture
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_temp_files(test_config):

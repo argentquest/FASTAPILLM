@@ -17,7 +17,13 @@ Requirements:
 import asyncio
 import aiohttp
 import time
+import sys
 from typing import Dict, List, Optional
+
+# Fix Unicode output on Windows
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 import json
 
 # Test configuration
@@ -173,7 +179,7 @@ class RateLimitTester:
     def analyze_results(self, endpoint_name: str, results: List[Dict]):
         """Analyze test results and provide summary."""
         if not results:
-            print(f"❌ No results for {endpoint_name}")
+            print(f"ERROR: No results for {endpoint_name}")
             return
         
         total_requests = len(results)
@@ -203,13 +209,13 @@ class RateLimitTester:
         
         # Check if rate limiting is working as expected
         if rate_limited > 0:
-            print(f"   ✅ Rate limiting is working - blocked {rate_limited} requests")
+            print(f"   SUCCESS: Rate limiting is working - blocked {rate_limited} requests")
         else:
-            print(f"   ⚠️  No rate limiting detected - may need more aggressive testing")
+            print(f"   WARNING:  No rate limiting detected - may need more aggressive testing")
     
     async def run_comprehensive_test(self):
         """Run comprehensive rate limiting tests."""
-        print("🚀 Starting comprehensive rate limiting tests...")
+        print("Starting comprehensive rate limiting tests...")
         print(f"Testing server at: {self.base_url}")
         
         # Test each endpoint type
@@ -232,7 +238,7 @@ class RateLimitTester:
                 await asyncio.sleep(2)
                 
             except Exception as e:
-                print(f"❌ Error testing {endpoint_name}: {e}")
+                print(f"ERROR: Error testing {endpoint_name}: {e}")
         
         # Test concurrent requests on most restrictive endpoint
         try:
@@ -240,9 +246,9 @@ class RateLimitTester:
             self.results["Concurrent Story Generation"] = concurrent_results
             self.analyze_results("Concurrent Story Generation", concurrent_results)
         except Exception as e:
-            print(f"❌ Error testing concurrent requests: {e}")
+            print(f"ERROR: Error testing concurrent requests: {e}")
         
-        print("\n🎯 Rate limiting test complete!")
+        print("\nCOMPLETE: Rate limiting test complete!")
         return self.results
 
 async def main():
@@ -255,11 +261,11 @@ async def main():
         async with aiohttp.ClientSession() as session:
             async with session.get(f"{BASE_URL}/health") as response:
                 if response.status != 200:
-                    print(f"❌ Server not responding properly (status: {response.status})")
+                    print(f"ERROR: Server not responding properly (status: {response.status})")
                     return
-                print("✅ Server is running and responding")
+                print("OK: Server is running and responding")
     except Exception as e:
-        print(f"❌ Cannot connect to server at {BASE_URL}")
+        print(f"ERROR: Cannot connect to server at {BASE_URL}")
         print(f"   Error: {e}")
         print("   Make sure the FastAPI server is running with: python backend/main.py")
         return
@@ -272,9 +278,9 @@ async def main():
         try:
             with open("rate_limiting_test_results.json", "w") as f:
                 json.dump(results, f, indent=2, default=str)
-            print(f"\n💾 Test results saved to: rate_limiting_test_results.json")
+            print(f"\nSAVED: Test results saved to: rate_limiting_test_results.json")
         except Exception as e:
-            print(f"⚠️  Could not save results to file: {e}")
+            print(f"WARNING:  Could not save results to file: {e}")
 
 if __name__ == "__main__":
     print("Starting rate limiting tests...")
@@ -284,8 +290,8 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n⛔ Tests interrupted by user")
+        print("\nINTERRUPTED: Tests interrupted by user")
     except Exception as e:
-        print(f"\n❌ Test suite failed: {e}")
+        print(f"\nERROR: Test suite failed: {e}")
         import traceback
         traceback.print_exc()

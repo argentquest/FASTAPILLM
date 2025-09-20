@@ -91,7 +91,7 @@ class TestPromptFileExistence:
     @pytest.mark.parametrize("filename", prompt_files)
     def test_prompt_file_exists(self, filename):
         """Test that each required prompt file exists and is not empty"""
-        prompts_dir = Path(__file__).parent.parent / "prompts"
+        prompts_dir = Path(__file__).parent.parent / "backend" / "prompts"
         file_path = prompts_dir / filename
         assert file_path.exists(), f"Prompt file {filename} does not exist"
         

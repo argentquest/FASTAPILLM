@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder stage
-COPY --from=builder /root/.local /root/.local
+COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application code
 COPY . .
@@ -43,14 +43,14 @@ RUN mkdir -p logs && \
     chown -R appuser:appuser /app
 
 # Make sure scripts are executable
-RUN chmod +x /app/main.py
+RUN chmod +x /app/backend/main.py
+
+# Set Python path
+ENV PATH=/home/appuser/.local/bin:$PATH
+ENV PYTHONPATH=/app
 
 # Switch to non-root user
 USER appuser
-
-# Set Python path
-ENV PATH=/root/.local/bin:$PATH
-ENV PYTHONPATH=/app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
@@ -60,7 +60,7 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 EXPOSE 8000
 
 # Default command
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # Metadata labels
 LABEL maintainer="AI Content Platform Team" \
